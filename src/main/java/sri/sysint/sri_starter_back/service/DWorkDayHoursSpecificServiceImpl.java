@@ -100,30 +100,47 @@ public class DWorkDayHoursSpecificServiceImpl {
 	        }
 	    }
 
-
+	    public String formatDateToString(Date date) {
+	        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
+	        return formatter.format(date);
+	    }
+	    
 	    public DWorkDayHoursSpesific updateWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) {
 	        try {
+	            // Format the date to "DD-MM-YYYY"
+	            String formattedDate = formatDateToString(workHoursSpecific.getDATE_WD());
+
+	            // Find record by formatted date and description
 	            Optional<DWorkDayHoursSpesific> currentWorkHoursSpecificOpt =
-	                    dWorkDayHoursSpecificRepo.findById(workHoursSpecific.getDETAIL_WD_HOURS_SPECIFIC_ID());
+	                    dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(formattedDate, workHoursSpecific.getDESCRIPTION());
 
 	            if (currentWorkHoursSpecificOpt.isPresent()) {
 	                DWorkDayHoursSpesific currentWorkHoursSpecific = currentWorkHoursSpecificOpt.get();
 
+	                // Update shift times
 	                currentWorkHoursSpecific.setSHIFT1_START_TIME(workHoursSpecific.getSHIFT1_START_TIME());
 	                currentWorkHoursSpecific.setSHIFT1_END_TIME(workHoursSpecific.getSHIFT1_END_TIME());
 	                currentWorkHoursSpecific.setSHIFT2_START_TIME(workHoursSpecific.getSHIFT2_START_TIME());
 	                currentWorkHoursSpecific.setSHIFT2_END_TIME(workHoursSpecific.getSHIFT2_END_TIME());
 	                currentWorkHoursSpecific.setSHIFT3_START_TIME(workHoursSpecific.getSHIFT3_START_TIME());
 	                currentWorkHoursSpecific.setSHIFT3_END_TIME(workHoursSpecific.getSHIFT3_END_TIME());
-	                // Menghitung total waktu per shift
+
+	                // Calculate total time for each shift
 	                currentWorkHoursSpecific.setSHIFT1_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME()));
 	                currentWorkHoursSpecific.setSHIFT2_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT2_START_TIME(), workHoursSpecific.getSHIFT2_END_TIME()));
 	                currentWorkHoursSpecific.setSHIFT3_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT3_START_TIME(), workHoursSpecific.getSHIFT3_END_TIME()));
 
+	                // Set last update date and user
 	                currentWorkHoursSpecific.setLAST_UPDATE_DATE(new Date());
 	                currentWorkHoursSpecific.setLAST_UPDATED_BY(workHoursSpecific.getLAST_UPDATED_BY());
 
-	                return dWorkDayHoursSpecificRepo.save(currentWorkHoursSpecific);
+	                // Save and return the updated record
+	                DWorkDayHoursSpesific updatedWorkHoursSpecific = dWorkDayHoursSpecificRepo.save(currentWorkHoursSpecific);
+
+	                // Call updateOffAndSemiOff method
+	                updateOffAndSemiOff(updatedWorkHoursSpecific, formattedDate, workHoursSpecific.getDESCRIPTION());
+
+	                return updatedWorkHoursSpecific;
 	            } else {
 	                throw new RuntimeException("WorkHoursSpecific with ID " + workHoursSpecific.getDETAIL_WD_HOURS_SPECIFIC_ID() + " not found.");
 	            }
@@ -132,7 +149,6 @@ public class DWorkDayHoursSpecificServiceImpl {
 	            throw e;
 	        }
 	    }
-
 
 	    // Menghapus entri jam kerja spesifik
 	    public DWorkDayHoursSpesific deleteWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) {
