@@ -345,7 +345,14 @@ public class SettingController {
 	                            
 	                            setting.setSETTING_ID(settingServiceImpl.getNewId());
 	                            setting.setSETTING_KEY(keyCell.getStringCellValue());
-	                            setting.setSETTING_VALUE(valueCell.getStringCellValue());
+	                            String valueString = "";
+	                            if (valueCell.getCellType() == CellType.STRING) {
+	                                valueString = valueCell.getStringCellValue();
+	                            } else if (valueCell.getCellType() == CellType.NUMERIC) {
+	                                valueString = String.valueOf(valueCell.getNumericCellValue()); 
+	                            }
+	                            
+	                            setting.setSETTING_VALUE(valueString);
 	                            setting.setDESCRIPTION(descriptionCell.getStringCellValue());
 	                            setting.setSTATUS(BigDecimal.valueOf(1));
 	                            setting.setCREATION_DATE(new Date());
