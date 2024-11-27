@@ -16,7 +16,7 @@ public interface DWorkDayRepo extends JpaRepository<DWorkDay, BigDecimal>{
 	@Query(value = "SELECT * FROM SRI_IMPP_D_WD WHERE DETAIL_WD_ID = :id", nativeQuery = true)
     Optional<DWorkDay> findById(@Param("id") BigDecimal id);
 	
-	@Query(value = "SELECT * FROM SRI_IMPP_D_WD WHERE DATE_WD = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
+	@Query(value = "SELECT * FROM SRI_IMPP_D_WD WHERE TO_DATE(DATE_WD, 'DD-MM-YYYY') = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
 	List<DWorkDay> findByDate(@Param("id") String id);
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_WD WHERE DATE_WD = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
