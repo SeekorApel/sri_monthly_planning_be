@@ -42,6 +42,8 @@ public class DWorkDayHoursSpecificServiceImpl {
 	 @Autowired
 	 private WorkDayRepo workDayRepo;
 
+	private DWorkDayHoursSpesific currentWorkHoursSpecific;
+
 	    public DWorkDayHoursSpecificServiceImpl(DWorkDayHoursSpecificRepo dWorkDayHoursRepo) {
 	        this.dWorkDayHoursSpecificRepo = dWorkDayHoursRepo;
 	    }
@@ -81,10 +83,66 @@ public class DWorkDayHoursSpecificServiceImpl {
 	        return dWorkDayHoursSpecificRepo.findDWdHoursByMonthAndYear(month, year);
 	    }
 
-	    public DWorkDayHoursSpesific saveWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) {
+	    public DWorkDayHoursSpesific saveWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) throws Exception {
 	        try {
-	            // Menghitung total waktu per shift
-	            workHoursSpecific.setSHIFT1_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME()));
+	        	
+	        	// Menghitung total waktu per shift
+                BigDecimal shift1TotalTime = calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME());
+
+                // Menggunakan zona waktu UTC
+                Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                calendar.setTime(workHoursSpecific.getDATE_WD());
+
+                System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); // Debug log untuk memastikan hari yang benar
+
+                if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
+                    // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
+                    Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); // Set zona waktu ke UTC
+                    baseDate.setTime(workHoursSpecific.getDATE_WD()); // Menggunakan tanggal dari workHoursSpecific
+                    Calendar startTime = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
+                    Calendar endTime = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
+
+                 // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
+                    Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                    breakStart.setTime(workHoursSpecific.getDATE_WD());
+                    breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
+                    breakStart.set(Calendar.MINUTE, 40);     // Menit 40
+                    breakStart.set(Calendar.SECOND, 0);      // Detik 0
+
+                    Calendar breakEnd = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                    breakEnd.setTime(workHoursSpecific.getDATE_WD());
+                    breakEnd.set(Calendar.HOUR_OF_DAY, 12);   // Jam 12
+                    breakEnd.set(Calendar.MINUTE, 40);        // Menit 40
+                    breakEnd.set(Calendar.SECOND, 0);         // Detik 0
+
+                    // Konversi ke zona waktu WIB jika diperlukan
+                    TimeZone wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta");
+                    breakStart.setTimeZone(wibTimeZone);
+                    breakEnd.setTimeZone(wibTimeZone);
+
+                    // Debug log untuk memastikan jam sudah diatur dengan benar
+                    System.out.println("Break Start: " + breakStart.getTime()); // Debugging
+                    System.out.println("Break End: " + breakEnd.getTime());   // Debugging
+
+
+                    System.out.println("start time: " + startTime.getTime()); // Debug log
+                    System.out.println("end time: " + endTime.getTime()); // Debug log
+
+                    // Jika waktu mulai dan selesai melewati jam istirahat
+                    if (startTime.before(breakEnd) && endTime.after(breakStart)) {
+                        long overlapStart = Math.max(startTime.getTimeInMillis(), breakStart.getTimeInMillis());
+                        long overlapEnd = Math.min(endTime.getTimeInMillis(), breakEnd.getTimeInMillis());
+                        if (overlapStart < overlapEnd) {
+                            long overlapDurationMillis = overlapEnd - overlapStart;
+                            long overlapDurationMinutes = overlapDurationMillis / 60000;
+                            shift1TotalTime = shift1TotalTime.subtract(new BigDecimal(overlapDurationMinutes));
+                            System.out.println("Updated shift1TotalTime: " + shift1TotalTime); // Debugging
+                        }
+                    }
+                }
+
+                workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
+
 	            workHoursSpecific.setSHIFT2_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT2_START_TIME(), workHoursSpecific.getSHIFT2_END_TIME()));
 	            workHoursSpecific.setSHIFT3_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT3_START_TIME(), workHoursSpecific.getSHIFT3_END_TIME()));
 
@@ -99,13 +157,49 @@ public class DWorkDayHoursSpecificServiceImpl {
 	            throw e;
 	        }
 	    }
-
+	    
+//	    private Calendar convertToCalendar(String timeString, Calendar baseDate) throws Exception {
+//	        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+//	        Date date = sdf.parse(timeString); // Mengonversi string ke Date
+//
+//	        // Gunakan tanggal dari baseDate (tanggal kerja) untuk menetapkan waktu yang tepat
+//	        Calendar calendar = Calendar.getInstance();
+//	        calendar.setTime(date); // Set waktu dari date yang sudah di-parsing
+//
+//	        // Set tanggal dari baseDate ke calendar
+//	        calendar.set(Calendar.YEAR, baseDate.get(Calendar.YEAR));
+//	        calendar.set(Calendar.MONTH, baseDate.get(Calendar.MONTH));
+//	        calendar.set(Calendar.DAY_OF_MONTH, baseDate.get(Calendar.DAY_OF_MONTH));
+//
+//	        // Debugging untuk memastikan waktu yang dikonversi benar
+//	        System.out.println("Converted time for " + timeString + ": " + calendar.getTime()); 
+//	        return calendar;
+//	    }
+	    
 	    public String formatDateToString(Date date) {
 	        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
 	        return formatter.format(date);
 	    }
 	    
-	    public DWorkDayHoursSpesific updateWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) {
+	    private Calendar convertToCalendar(String timeString, Calendar baseDate) throws Exception {
+	        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+	        Date date = sdf.parse(timeString); // Mengonversi string ke Date
+	        
+	        // Gunakan tanggal dari baseDate (tanggal kerja) untuk menetapkan waktu yang tepat
+	        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC")); // Set Zona Waktu ke UTC
+	        calendar.setTime(date); // Set waktu dari date yang sudah di-parsing
+
+	        // Set tanggal dari baseDate ke calendar
+	        calendar.set(Calendar.YEAR, baseDate.get(Calendar.YEAR));
+	        calendar.set(Calendar.MONTH, baseDate.get(Calendar.MONTH));
+	        calendar.set(Calendar.DAY_OF_MONTH, baseDate.get(Calendar.DAY_OF_MONTH));
+
+	        // Debugging untuk memastikan waktu yang dikonversi benar
+	        System.out.println("Converted time for " + timeString + ": " + calendar.getTime()); 
+	        return calendar;
+	    }
+
+	    public DWorkDayHoursSpesific updateWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) throws Exception {
 	        try {
 	            // Format the date to "DD-MM-YYYY"
 	            String formattedDate = formatDateToString(workHoursSpecific.getDATE_WD());
@@ -125,8 +219,62 @@ public class DWorkDayHoursSpecificServiceImpl {
 	                currentWorkHoursSpecific.setSHIFT3_START_TIME(workHoursSpecific.getSHIFT3_START_TIME());
 	                currentWorkHoursSpecific.setSHIFT3_END_TIME(workHoursSpecific.getSHIFT3_END_TIME());
 
-	                // Calculate total time for each shift
-	                currentWorkHoursSpecific.setSHIFT1_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME()));
+	                // Menghitung total waktu per shift
+	                BigDecimal shift1TotalTime = calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME());
+
+	                // Menggunakan zona waktu UTC
+	                Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+	                calendar.setTime(workHoursSpecific.getDATE_WD());
+
+	                System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); // Debug log untuk memastikan hari yang benar
+
+	                if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
+	                    // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
+	                    Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); // Set zona waktu ke UTC
+	                    baseDate.setTime(workHoursSpecific.getDATE_WD()); // Menggunakan tanggal dari workHoursSpecific
+	                    Calendar startTime = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
+	                    Calendar endTime = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
+
+	                 // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
+	                    Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+	                    breakStart.setTime(workHoursSpecific.getDATE_WD());
+	                    breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
+	                    breakStart.set(Calendar.MINUTE, 40);     // Menit 40
+	                    breakStart.set(Calendar.SECOND, 0);      // Detik 0
+
+	                    Calendar breakEnd = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+	                    breakEnd.setTime(workHoursSpecific.getDATE_WD());
+	                    breakEnd.set(Calendar.HOUR_OF_DAY, 12);   // Jam 12
+	                    breakEnd.set(Calendar.MINUTE, 40);        // Menit 40
+	                    breakEnd.set(Calendar.SECOND, 0);         // Detik 0
+
+	                    // Konversi ke zona waktu WIB jika diperlukan
+	                    TimeZone wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta");
+	                    breakStart.setTimeZone(wibTimeZone);
+	                    breakEnd.setTimeZone(wibTimeZone);
+
+	                    // Debug log untuk memastikan jam sudah diatur dengan benar
+	                    System.out.println("Break Start: " + breakStart.getTime()); // Debugging
+	                    System.out.println("Break End: " + breakEnd.getTime());   // Debugging
+
+
+	                    System.out.println("start time: " + startTime.getTime()); // Debug log
+	                    System.out.println("end time: " + endTime.getTime()); // Debug log
+
+	                    // Jika waktu mulai dan selesai melewati jam istirahat
+	                    if (startTime.before(breakEnd) && endTime.after(breakStart)) {
+	                        long overlapStart = Math.max(startTime.getTimeInMillis(), breakStart.getTimeInMillis());
+	                        long overlapEnd = Math.min(endTime.getTimeInMillis(), breakEnd.getTimeInMillis());
+	                        if (overlapStart < overlapEnd) {
+	                            long overlapDurationMillis = overlapEnd - overlapStart;
+	                            long overlapDurationMinutes = overlapDurationMillis / 60000;
+	                            shift1TotalTime = shift1TotalTime.subtract(new BigDecimal(overlapDurationMinutes));
+	                            System.out.println("Updated shift1TotalTime: " + shift1TotalTime); // Debugging
+	                        }
+	                    }
+	                }
+
+	                currentWorkHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
 	                currentWorkHoursSpecific.setSHIFT2_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT2_START_TIME(), workHoursSpecific.getSHIFT2_END_TIME()));
 	                currentWorkHoursSpecific.setSHIFT3_TOTAL_TIME(calculateTotalTime(workHoursSpecific.getSHIFT3_START_TIME(), workHoursSpecific.getSHIFT3_END_TIME()));
 
@@ -332,7 +480,7 @@ public class DWorkDayHoursSpecificServiceImpl {
         }
     }
 
-    public Optional<DWorkDayHoursSpesific> updateShiftTimes(String startTime, String endTime, String parsedDate, String description, int shift) {
+    public Optional<DWorkDayHoursSpesific> updateShiftTimes(String startTime, String endTime, String parsedDate, String description, int shift) throws Exception {
         Optional<DWorkDayHoursSpesific> workHoursSpecificOpt = dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(parsedDate, description);
 
         if (workHoursSpecificOpt.isPresent()) {
@@ -340,9 +488,64 @@ public class DWorkDayHoursSpecificServiceImpl {
 
             switch (shift) {
                 case 1:
+                	BigDecimal shift1TotalTime = calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME());
+
+                    // Menggunakan zona waktu UTC
+                    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                    calendar.setTime(workHoursSpecific.getDATE_WD());
+
+                    System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); // Debug log untuk memastikan hari yang benar
+
+                    if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
+                        // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
+                        Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); // Set zona waktu ke UTC
+                        baseDate.setTime(workHoursSpecific.getDATE_WD()); // Menggunakan tanggal dari workHoursSpecific
+                        Calendar startTimee = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
+                        Calendar endTimee = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
+
+                     // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
+                        Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        breakStart.setTime(workHoursSpecific.getDATE_WD());
+                        breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
+                        breakStart.set(Calendar.MINUTE, 40);     // Menit 40
+                        breakStart.set(Calendar.SECOND, 0);      // Detik 0
+
+                        Calendar breakEnd = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        breakEnd.setTime(workHoursSpecific.getDATE_WD());
+                        breakEnd.set(Calendar.HOUR_OF_DAY, 12);   // Jam 12
+                        breakEnd.set(Calendar.MINUTE, 40);        // Menit 40
+                        breakEnd.set(Calendar.SECOND, 0);         // Detik 0
+
+                        // Konversi ke zona waktu WIB jika diperlukan
+                        TimeZone wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta");
+                        breakStart.setTimeZone(wibTimeZone);
+                        breakEnd.setTimeZone(wibTimeZone);
+
+                        // Debug log untuk memastikan jam sudah diatur dengan benar
+                        System.out.println("Break Start: " + breakStart.getTime()); // Debugging
+                        System.out.println("Break End: " + breakEnd.getTime());   // Debugging
+
+
+                        System.out.println("start time: " + startTimee.getTime()); // Debug log
+                        System.out.println("end time: " + endTimee.getTime()); // Debug log
+
+                        // Jika waktu mulai dan selesai melewati jam istirahat
+                        if (startTimee.before(breakEnd) && endTimee.after(breakStart)) {
+                            long overlapStart = Math.max(startTimee.getTimeInMillis(), breakStart.getTimeInMillis());
+                            long overlapEnd = Math.min(endTimee.getTimeInMillis(), breakEnd.getTimeInMillis());
+                            if (overlapStart < overlapEnd) {
+                                long overlapDurationMillis = overlapEnd - overlapStart;
+                                long overlapDurationMinutes = overlapDurationMillis / 60000;
+                                shift1TotalTime = shift1TotalTime.subtract(new BigDecimal(overlapDurationMinutes));
+                                System.out.println("Updated shift1TotalTime: " + shift1TotalTime); // Debugging
+                            }
+                        }
+                    }
+
+                    workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
+		            
                     workHoursSpecific.setSHIFT1_START_TIME(startTime);
                     workHoursSpecific.setSHIFT1_END_TIME(endTime);
-                    workHoursSpecific.setSHIFT1_TOTAL_TIME(calculateTotalTime(startTime, endTime));
                     break;
                 case 2:
                     workHoursSpecific.setSHIFT2_START_TIME(startTime);
@@ -424,10 +627,10 @@ public class DWorkDayHoursSpecificServiceImpl {
                 workDay.setOFF(BigDecimal.ONE);
                 workDay.setSEMI_OFF(BigDecimal.ZERO);
             } else if (dayOfWeek == DayOfWeek.MONDAY) {
-                if (shift1.compareTo(BigDecimal.ZERO) > 0 && shift2.compareTo(BigDecimal.ZERO) > 0) {
+                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0) {
                     workDay.setOFF(BigDecimal.ZERO);
                     workDay.setSEMI_OFF(BigDecimal.ZERO);
-                } else if (shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) == 0) {
+                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0) {
                     workDay.setOFF(BigDecimal.ONE);
                     workDay.setSEMI_OFF(BigDecimal.ZERO);
                 } else {
@@ -435,15 +638,20 @@ public class DWorkDayHoursSpecificServiceImpl {
                     workDay.setSEMI_OFF(BigDecimal.ONE);
                 }
             } else if (dayOfWeek.getValue() >= DayOfWeek.TUESDAY.getValue() && dayOfWeek.getValue() <= DayOfWeek.FRIDAY.getValue()) {
-                if (shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) == 0 && shift3.compareTo(BigDecimal.ZERO) == 0) {
+            	System.out.println("masuk sini 1");
+                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) == 0) {
                     workDay.setOFF(BigDecimal.ONE);
                     workDay.setSEMI_OFF(BigDecimal.ZERO);
-                } else if (shift1.compareTo(BigDecimal.ZERO) > 0 && shift2.compareTo(BigDecimal.ZERO) > 0 && shift3.compareTo(BigDecimal.ZERO) > 0) {
+                	System.out.println("masuk sini 2");
+                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) > 0) {
                     workDay.setOFF(BigDecimal.ZERO);
                     workDay.setSEMI_OFF(BigDecimal.ZERO);
+                	System.out.println("masuk sini 3");
                 } else {
                     workDay.setOFF(BigDecimal.ZERO);
                     workDay.setSEMI_OFF(BigDecimal.ONE);
+                	System.out.println("masuk sini 4");
+
                 }
             }
 
