@@ -28,7 +28,7 @@ public interface DWorkDayHoursSpecificRepo extends JpaRepository<DWorkDayHoursSp
 	@Query(value = "SELECT COUNT(*) FROM SRI_IMPP_D_WD_HOURS_SPECIFIC", nativeQuery = true)
     BigDecimal getNewId();
 	
-	@Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC WHERE DATE_WD = TO_DATE(:date, 'DD-MM-YYYY') AND DESCRIPTION = :description", nativeQuery = true)
+	@Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC WHERE TO_DATE(DATE_WD, 'DD-MM-YYYY') = TO_DATE(:date, 'DD-MM-YYYY') AND DESCRIPTION = :description", nativeQuery = true)
 	Optional<DWorkDayHoursSpesific> findDWdHoursByDateAndDescription(@Param("date") String date, @Param("description") String description);
 
 	@Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC", nativeQuery = true)
