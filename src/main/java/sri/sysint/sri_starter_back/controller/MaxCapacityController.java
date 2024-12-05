@@ -287,21 +287,21 @@ public class MaxCapacityController {
 		
 		@PostMapping("/saveMaxCapacitiesExcel")
 		public Response saveMaxCapacitiesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-//		    String header = req.getHeader("Authorization");
-//
-//		    if (header == null || !header.startsWith("Bearer ")) {
-//		        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-//		    }
-//
-//		    String token = header.replace("Bearer ", "");
-//
-//		    try {
-//		        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-//		            .build()
-//		            .verify(token)
-//		            .getSubject();
-//
-//		        if (user != null) {
+		    String header = req.getHeader("Authorization");
+
+		    if (header == null || !header.startsWith("Bearer ")) {
+		        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+		    }
+
+		    String token = header.replace("Bearer ", "");
+
+		    try {
+		        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+		            .build()
+		            .verify(token)
+		            .getSubject();
+
+		        if (user != null) {
 		            if (file.isEmpty()) {
 		                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 		            }
@@ -335,12 +335,12 @@ public class MaxCapacityController {
 
 		                        MaxCapacity maxCapacity = new MaxCapacity();
 
-		                        Cell productIdCell = row.getCell(1);
-		                        Cell machineCurringTypeIDCell = row.getCell(2);
-		                        Cell cycleTimeCell = row.getCell(3);
-		                        Cell capacityShift1Cell = row.getCell(4);
-		                        Cell capacityShift2Cell = row.getCell(5);
-		                        Cell capacityShift3Cell = row.getCell(6);
+		                        Cell productIdCell = row.getCell(2);
+		                        Cell machineCurringTypeIDCell = row.getCell(3);
+		                        Cell cycleTimeCell = row.getCell(4);
+		                        Cell capacityShift1Cell = row.getCell(5);
+		                        Cell capacityShift2Cell = row.getCell(6);
+		                        Cell capacityShift3Cell = row.getCell(7);
 
 		                        if (productIdCell != null && productIdCell.getCellType() == CellType.NUMERIC
 		                                && machineCurringTypeIDCell != null 
@@ -373,12 +373,12 @@ public class MaxCapacityController {
 		            } catch (IOException e) {
 		                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
 		            }
-//		        } else {
-//		            throw new ResourceNotFoundException("User not found");
-//		        }
-//		    } catch (Exception e) {
-//		        throw new ResourceNotFoundException("JWT token is not valid or expired");
-//		    }
+		        } else {
+		            throw new ResourceNotFoundException("User not found");
+		        }
+		    } catch (Exception e) {
+		        throw new ResourceNotFoundException("JWT token is not valid or expired");
+		    }
 
 		    return response;
 		}
