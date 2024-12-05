@@ -306,9 +306,9 @@ public class DeliveryScheduleController {
 	            if (row != null) {
 	                DeliverySchedule deliverySchedule = new DeliverySchedule();
 
-	                Cell effectiveTimeCell = row.getCell(1);
-	                Cell dateIssuedCell = row.getCell(2);
-	                Cell categoryCell = row.getCell(3);
+	                Cell effectiveTimeCell = row.getCell(2);
+	                Cell dateIssuedCell = row.getCell(3);
+	                Cell categoryCell = row.getCell(4);
 
 	                if (effectiveTimeCell != null && dateIssuedCell != null && categoryCell != null) {
 	                    deliverySchedule.setDS_ID(deliveryScheduleServiceImpl.getNewId());
