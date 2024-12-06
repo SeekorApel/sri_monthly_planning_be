@@ -488,7 +488,7 @@ public class DWorkDayHoursSpecificServiceImpl {
 
             switch (shift) {
                 case 1:
-                	BigDecimal shift1TotalTime = calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME());
+                	BigDecimal shift1TotalTime = calculateTotalTime(startTime, endTime);
 
                     // Menggunakan zona waktu UTC
                     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
@@ -541,11 +541,11 @@ public class DWorkDayHoursSpecificServiceImpl {
                             }
                         }
                     }
-
-                    workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
 		            
                     workHoursSpecific.setSHIFT1_START_TIME(startTime);
                     workHoursSpecific.setSHIFT1_END_TIME(endTime);
+                    workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
+
                     break;
                 case 2:
                     workHoursSpecific.setSHIFT2_START_TIME(startTime);
