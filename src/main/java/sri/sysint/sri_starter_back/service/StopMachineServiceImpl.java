@@ -63,14 +63,11 @@ public class StopMachineServiceImpl {
 
     public StopMachine saveStopMachine(StopMachine stopMachine) {
         try {
-            LocalDateTime startDate = stopMachine.getSTART_DATE().toInstant()
+            LocalDateTime startDate = stopMachine.getDATE_PM().toInstant()
                     .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
-            LocalDateTime endDate = stopMachine.getEND_DATE().toInstant()
-                    .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
-
-            stopMachine.setSTART_DATE(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
-            stopMachine.setEND_DATE(Date.from(endDate.atZone(ZoneId.of("UTC")).toInstant()));
             
+            stopMachine.setDATE_PM(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
+            stopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME()));
             stopMachine.setSTOP_MACHINE_ID(getNewId());
             stopMachine.setSTATUS(BigDecimal.valueOf(1));
             stopMachine.setCREATION_DATE(new Date());
@@ -89,13 +86,15 @@ public class StopMachineServiceImpl {
             if (currentStopMachineOpt.isPresent()) {
                 StopMachine currentStopMachine = currentStopMachineOpt.get();
                 
-                LocalDateTime startDate = stopMachine.getSTART_DATE().toInstant()
+                LocalDateTime startDate = stopMachine.getDATE_PM().toInstant()
                         .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
-                LocalDateTime endDate = stopMachine.getEND_DATE().toInstant()
-                        .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+                
+                currentStopMachine.setSTART_TIME(stopMachine.getSTART_TIME());
+                currentStopMachine.setEND_TIME(stopMachine.getEND_TIME());;
 
-                currentStopMachine.setSTART_DATE(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
-                currentStopMachine.setEND_DATE(Date.from(endDate.atZone(ZoneId.of("UTC")).toInstant()));
+                currentStopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME()));
+                
+                currentStopMachine.setDATE_PM(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
                 
                 currentStopMachine.setWORK_CENTER_TEXT(stopMachine.getWORK_CENTER_TEXT());
                 currentStopMachine.setLAST_UPDATE_DATE(new Date());
@@ -169,8 +168,10 @@ public class StopMachineServiceImpl {
             "NOMOR", 
             "STOP_MACHINE_ID", 
             "WORK_CENTER_TEXT", 
-            "START_DATE", 
-            "END_DATE"
+            "DATE_PM",
+            "START_TIME",
+            "END_TIME",
+            "TOTAL_TIME"
         };
 
         Workbook workbook = new XSSFWorkbook();
@@ -206,12 +207,19 @@ public class StopMachineServiceImpl {
             DataFormat dateFormat = workbook.createDataFormat();
             dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
 
+            // Time style for formatting time (hh:mm)
+            CellStyle timeStyle = workbook.createCellStyle();
+            timeStyle.cloneStyleFrom(borderStyle);
+            timeStyle.setDataFormat(dateFormat.getFormat("hh:mm"));
+
             // Set column widths (adjusted from your example)
             sheet.setColumnWidth(0, 10 * 256); 
             sheet.setColumnWidth(1, 20 * 256); 
             sheet.setColumnWidth(2, 30 * 256); 
             sheet.setColumnWidth(3, 20 * 256); 
             sheet.setColumnWidth(4, 20 * 256); 
+            sheet.setColumnWidth(5, 20 * 256); 
+            sheet.setColumnWidth(6, 20 * 256);
 
             // Create header row
             Row headerRow = sheet.createRow(0);
@@ -234,33 +242,52 @@ public class StopMachineServiceImpl {
 
                 // STOP_MACHINE_ID column
                 Cell idCell = dataRow.createCell(1);
-                idCell.setCellValue(sm.getSTOP_MACHINE_ID().doubleValue());
+                idCell.setCellValue(sm.getSTOP_MACHINE_ID() != null ? sm.getSTOP_MACHINE_ID().doubleValue() : null);  // Handle null
                 idCell.setCellStyle(borderStyle);
 
                 // WORK_CENTER_TEXT column
                 Cell workCenterCell = dataRow.createCell(2);
-                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT());
+                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT() != null ? sm.getWORK_CENTER_TEXT() : "");  // Handle null
                 workCenterCell.setCellStyle(borderStyle);
 
-                // START_DATE column (formatted as date)
-                Cell startDateCell = dataRow.createCell(3);
-                if (sm.getSTART_DATE() != null) {
-                    startDateCell.setCellValue(sm.getSTART_DATE());
-                    startDateCell.setCellStyle(dateStyle);
+                // DATE_PM column (formatted as date)
+                Cell datePmCell = dataRow.createCell(3);
+                if (sm.getDATE_PM() != null) {
+                    datePmCell.setCellValue(sm.getDATE_PM());
+                    datePmCell.setCellStyle(dateStyle);
                 } else {
-                    startDateCell.setCellValue("");
-                    startDateCell.setCellStyle(borderStyle);
+                    datePmCell.setCellValue("");
+                    datePmCell.setCellStyle(borderStyle);
                 }
 
-                // END_DATE column (formatted as date)
-                Cell endDateCell = dataRow.createCell(4);
-                if (sm.getEND_DATE() != null) {
-                    endDateCell.setCellValue(sm.getEND_DATE());
-                    endDateCell.setCellStyle(dateStyle);
+                // START_TIME column (formatted as time)
+                Cell startTimeCell = dataRow.createCell(4);
+                if (sm.getSTART_TIME() != null) {
+                    startTimeCell.setCellValue(sm.getSTART_TIME());
+                    startTimeCell.setCellStyle(timeStyle);
                 } else {
-                    endDateCell.setCellValue("");
-                    endDateCell.setCellStyle(borderStyle);
+                    startTimeCell.setCellValue("");
+                    startTimeCell.setCellStyle(borderStyle);
                 }
+
+                // END_TIME column (formatted as time)
+                Cell endTimeCell = dataRow.createCell(5);
+                if (sm.getEND_TIME() != null) {
+                    endTimeCell.setCellValue(sm.getEND_TIME());
+                    endTimeCell.setCellStyle(timeStyle);
+                } else {
+                    endTimeCell.setCellValue("");
+                    endTimeCell.setCellStyle(borderStyle);
+                }
+
+                // TOTAL_TIME column (calculated as difference between END_TIME and START_TIME)
+                Cell totalTimeCell = dataRow.createCell(6);
+                if (sm.getSTART_TIME() != null && sm.getEND_TIME() != null) {
+                    totalTimeCell.setCellValue(sm.getTOTAL_TIME().doubleValue());
+                } else {
+                    totalTimeCell.setCellValue("");
+                }
+                totalTimeCell.setCellStyle(borderStyle);
             }
 
             workbook.write(out);
@@ -273,6 +300,28 @@ public class StopMachineServiceImpl {
             workbook.close();
             out.close();
         }
+    }
+
+    
+    private int combineTimeWithMinutes(String timeStr) {
+        // Mengonversi string waktu "HH:mm" menjadi total menit
+        String[] parts = timeStr.split(":");
+        int hours = Integer.parseInt(parts[0]);
+        int minutes = Integer.parseInt(parts[1]);
+        return hours * 60 + minutes;
+    }
+    
+    private BigDecimal calculateTotalTime(String startTimeStr, String endTimeStr) {
+        int startMinutes = combineTimeWithMinutes(startTimeStr);
+        int endMinutes = combineTimeWithMinutes(endTimeStr);
+        
+        int diffMinutes = endMinutes - startMinutes;
+        
+        if (diffMinutes < 0) {
+            diffMinutes += 24 * 60; 
+        }
+
+        return BigDecimal.valueOf(diffMinutes);
     }
 
 }

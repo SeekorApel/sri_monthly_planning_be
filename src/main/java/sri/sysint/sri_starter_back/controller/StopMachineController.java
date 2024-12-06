@@ -132,8 +132,7 @@ public class StopMachineController {
         String user = validateTokenAndGetUser(req);
 
         if (user != null) {
-        	stopMachine.setSTART_DATE(adjustDate(stopMachine.getSTART_DATE()));
-        	stopMachine.setEND_DATE(adjustDate(stopMachine.getEND_DATE()));
+        	stopMachine.setDATE_PM(adjustDate(stopMachine.getDATE_PM()));
 
             StopMachine savedStopMachine = stopMachineService.saveStopMachine(stopMachine);
             response = new Response(
@@ -170,8 +169,7 @@ public class StopMachineController {
         String user = validateTokenAndGetUser(req);
 
         if (user != null) {
-        	stopMachine.setSTART_DATE(adjustDate(stopMachine.getSTART_DATE()));
-        	stopMachine.setEND_DATE(adjustDate(stopMachine.getEND_DATE()));
+        	stopMachine.setDATE_PM(adjustDate(stopMachine.getDATE_PM()));
         	
             StopMachine updatedStopMachine = stopMachineService.updateStopMachine(stopMachine);
             response = new Response(
@@ -284,21 +282,22 @@ public class StopMachineController {
                             StopMachine stopMachine = new StopMachine();
 
                             Cell workCenterCell = row.getCell(2);
-                            Cell startDateCell = row.getCell(3);
-                            Cell endDateCell = row.getCell(4);
+                            Cell DatePmCell = row.getCell(3);
+                            Cell startTimeCell = row.getCell(4);
+                            Cell endTimeCell = row.getCell(5);
+                            Cell totalTimeCell = row.getCell(6);
 
-                            if (workCenterCell != null && startDateCell != null && endDateCell != null) {
+                            if (workCenterCell != null) {
                                 stopMachine.setSTOP_MACHINE_ID(stopMachineService.getNewId());
                                 stopMachine.setWORK_CENTER_TEXT(workCenterCell.getStringCellValue());
 
-                                // Convert date values using the helper function for date parsing
-                                Date startDate = getDateFromCell(startDateCell);
-                                Date endDate = getDateFromCell(endDateCell);
+                                Date DatePm = getDateFromCell(DatePmCell);
 
-                                if (startDate != null && endDate != null) {
-                                    stopMachine.setSTART_DATE(startDate);
-                                    stopMachine.setEND_DATE(endDate);
-
+                                if (startTimeCell != null && endTimeCell != null) {
+                                    stopMachine.setDATE_PM(DatePm);
+                                    stopMachine.setSTART_TIME(startTimeCell.getStringCellValue());
+                                    stopMachine.setEND_TIME(endTimeCell.getStringCellValue());
+                                    stopMachine.setTOTAL_TIME(BigDecimal.valueOf(totalTimeCell.getNumericCellValue()));
                                     stopMachine.setSTATUS(BigDecimal.valueOf(1));
                                     stopMachine.setCREATION_DATE(new Date());
                                     stopMachine.setLAST_UPDATE_DATE(new Date());
