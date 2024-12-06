@@ -4,6 +4,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +16,7 @@ import javax.transaction.Transactional;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -60,6 +63,11 @@ public class DDeliveryScheduleServiceImpl {
 
     public DDeliverySchedule saveDDeliverySchedule(DDeliverySchedule dDeliverySchedule) {
         try {
+            LocalDateTime date = dDeliverySchedule.getDATE_DS().toInstant()
+                    .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+            
+            dDeliverySchedule.setDATE_DS(Date.from(date.atZone(ZoneId.of("UTC")).toInstant()));
+            
             dDeliverySchedule.setDETAIL_DS_ID(getNewId());
             dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
             dDeliverySchedule.setCREATION_DATE(new Date());
@@ -78,9 +86,13 @@ public class DDeliveryScheduleServiceImpl {
             if (currentDDeliveryScheduleOpt.isPresent()) {
                 DDeliverySchedule currentDDeliverySchedule = currentDDeliveryScheduleOpt.get();
 
+                LocalDateTime date = dDeliverySchedule.getDATE_DS().toInstant()
+                        .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+                
+                currentDDeliverySchedule.setDATE_DS(Date.from(date.atZone(ZoneId.of("UTC")).toInstant()));
+                
                 currentDDeliverySchedule.setDS_ID(dDeliverySchedule.getDS_ID());
                 currentDDeliverySchedule.setPART_NUM(dDeliverySchedule.getPART_NUM());
-                currentDDeliverySchedule.setDATE_DS(dDeliverySchedule.getDATE_DS());
                 currentDDeliverySchedule.setTOTAL_DELIVERY(dDeliverySchedule.getTOTAL_DELIVERY());
                 currentDDeliverySchedule.setLAST_UPDATE_DATE(new Date());
                 currentDDeliverySchedule.setLAST_UPDATED_BY(dDeliverySchedule.getLAST_UPDATED_BY());
@@ -149,6 +161,7 @@ public class DDeliveryScheduleServiceImpl {
     
     private ByteArrayInputStream dataToExcel(List<DDeliverySchedule> dDeliverySchedules) throws IOException {
         String[] header = {
+            "NOMOR",                  
             "DETAIL_DS_ID",
             "DELIVERYSCHEDULE_ID",
             "PART_NUM",
@@ -162,11 +175,11 @@ public class DDeliveryScheduleServiceImpl {
         try {
             Sheet sheet = workbook.createSheet("DDeliverySchedule Data");
 
-            // Create font for header
+            // Font for the header
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
-            // Create cell style with border
+            // Border Style for cells
             CellStyle borderStyle = workbook.createCellStyle();
             borderStyle.setBorderTop(BorderStyle.THIN);
             borderStyle.setBorderBottom(BorderStyle.THIN);
@@ -177,17 +190,26 @@ public class DDeliveryScheduleServiceImpl {
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
 
-            // Create header style with yellow background and border
+            // Header Style with bold font and yellow background
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+            // Date style for formatting dates in dd-MM-yyyy format
+            CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.cloneStyleFrom(borderStyle);
+            DataFormat dateFormat = workbook.createDataFormat();
+            dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
+
             // Set column widths
-            for (int i = 0; i < header.length; i++) {
-                sheet.setColumnWidth(i, 20 * 256); // 20 characters wide
-            }
+            sheet.setColumnWidth(0, 10 * 256); // Nomor column
+            sheet.setColumnWidth(1, 20 * 256); // DETAIL_DS_ID column
+            sheet.setColumnWidth(2, 20 * 256); // DELIVERYSCHEDULE_ID column
+            sheet.setColumnWidth(3, 30 * 256); // PART_NUM column
+            sheet.setColumnWidth(4, 20 * 256); // DATE column
+            sheet.setColumnWidth(5, 20 * 256); // TOTAL_DELIVERY column
 
             // Create the header row
             Row headerRow = sheet.createRow(0);
@@ -202,28 +224,39 @@ public class DDeliveryScheduleServiceImpl {
             for (DDeliverySchedule d : dDeliverySchedules) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
-                // DETAIL_DS_ID
-                Cell detailDsIdCell = dataRow.createCell(0);
+                // Nomor column (sequential number)
+                Cell nomorCell = dataRow.createCell(0);
+                nomorCell.setCellValue(rowIndex - 1);  // Sequential number (1, 2, 3, ...)
+                nomorCell.setCellStyle(borderStyle);
+
+                // DETAIL_DS_ID column
+                Cell detailDsIdCell = dataRow.createCell(1);
                 detailDsIdCell.setCellValue(d.getDETAIL_DS_ID().doubleValue());
                 detailDsIdCell.setCellStyle(borderStyle);
 
-                // DELIVERYSCHEDULE_ID
-                Cell deliveryScheduleIdCell = dataRow.createCell(1);
-                deliveryScheduleIdCell.setCellValue(d.getDS_ID() != null ? d.getDS_ID().doubleValue() : null);
+                // DELIVERYSCHEDULE_ID column
+                Cell deliveryScheduleIdCell = dataRow.createCell(2);
+                deliveryScheduleIdCell.setCellValue(d.getDS_ID() != null ? d.getDS_ID().doubleValue() : 0);
                 deliveryScheduleIdCell.setCellStyle(borderStyle);
 
-                // PART_NUM
-                Cell partNumCell = dataRow.createCell(2);
-                partNumCell.setCellValue(d.getPART_NUM().doubleValue());                
+                // PART_NUM column
+                Cell partNumCell = dataRow.createCell(3);
+                partNumCell.setCellValue(d.getPART_NUM() != null ? d.getPART_NUM().doubleValue() : 0);
                 partNumCell.setCellStyle(borderStyle);
-                // DATE
-                Cell dateCell = dataRow.createCell(3);
-                dateCell.setCellValue(d.getDATE_DS() != null ? d.getDATE_DS().toString() : "");
-                dateCell.setCellStyle(borderStyle);
 
-                // TOTAL_DELIVERY
-                Cell totalDeliveryCell = dataRow.createCell(4);
-                totalDeliveryCell.setCellValue(d.getTOTAL_DELIVERY().doubleValue());
+                // DATE column (formatted as date)
+                Cell dateCell = dataRow.createCell(4);
+                if (d.getDATE_DS() != null) {
+                    dateCell.setCellValue(d.getDATE_DS());
+                    dateCell.setCellStyle(dateStyle);
+                } else {
+                    dateCell.setCellValue("");
+                    dateCell.setCellStyle(borderStyle);
+                }
+
+                // TOTAL_DELIVERY column
+                Cell totalDeliveryCell = dataRow.createCell(5);
+                totalDeliveryCell.setCellValue(d.getTOTAL_DELIVERY() != null ? d.getTOTAL_DELIVERY().doubleValue() : 0);
                 totalDeliveryCell.setCellStyle(borderStyle);
             }
 
@@ -238,4 +271,6 @@ public class DDeliveryScheduleServiceImpl {
             out.close();
         }
     }
+
+
 }

@@ -24,4 +24,8 @@ public interface PlantRepo extends JpaRepository<Plant, BigDecimal>{
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_PLANT WHERE STATUS = 1", nativeQuery = true)
 	List<Plant> findPlantActive();
+
+	@Query(value = "SELECT * FROM SRI_IMPP_M_PLANT WHERE PLANT_NAME = :name", nativeQuery = true)
+	Optional<Plant> findByName(@Param("name") String name);
+
 }

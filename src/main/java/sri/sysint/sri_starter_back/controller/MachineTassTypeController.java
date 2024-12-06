@@ -43,6 +43,8 @@ import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.MachineTassType;
 import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.model.Setting;
+import sri.sysint.sri_starter_back.repository.SettingRepo;
 import sri.sysint.sri_starter_back.service.MachineCuringTypeServiceImpl;
 import sri.sysint.sri_starter_back.service.MachineTassTypeServiceImpl;
 import sri.sysint.sri_starter_back.service.PlantServiceImpl;
@@ -55,7 +57,8 @@ public class MachineTassTypeController {
 
 	@Autowired
 	private MachineTassTypeServiceImpl machineTassTypeServiceImpl;
-	
+	@Autowired
+	private SettingRepo settingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -338,22 +341,29 @@ public class MachineTassTypeController {
 			                        MachineTassType machineTassType = new MachineTassType();
 
 			                        Cell codeCell = row.getCell(1);
-			                        Cell settingIdCell = row.getCell(2);
+			                        Cell settingDescriptionCell = row.getCell(2); // Use description instead of ID
 			                        Cell descriptionCell = row.getCell(3);
 
-			                        if (codeCell != null && 
-			                        		settingIdCell != null && settingIdCell.getCellType() == CellType.NUMERIC
-			                                && descriptionCell != null) {
+			                        if (codeCell != null && settingDescriptionCell != null && descriptionCell != null) {
+			                            String settingDescription = settingDescriptionCell.getStringCellValue();
 
-			                            machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
-			                            machineTassType.setSETTING_ID(BigDecimal.valueOf(settingIdCell.getNumericCellValue()));
-			                            machineTassType.setDESCRIPTION(descriptionCell.getStringCellValue());
-			                            machineTassType.setSTATUS(BigDecimal.valueOf(1));
-			                            machineTassType.setCREATION_DATE(new Date());
-			                            machineTassType.setLAST_UPDATE_DATE(new Date());
+			                            // Find SETTING_ID by SETTING_DESCRIPTION
+			                            Optional<Setting> settingOptional = settingRepo.findByDescription(settingDescription);
 
-			                            machineTassTypeServiceImpl.saveMachineTassType(machineTassType);
-			                            machineTassTypes.add(machineTassType);
+			                            if (settingOptional.isPresent()) {
+			                                machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
+			                                machineTassType.setSETTING_ID(settingOptional.get().getSETTING_ID());
+			                                machineTassType.setDESCRIPTION(descriptionCell.getStringCellValue());
+			                                machineTassType.setSTATUS(BigDecimal.valueOf(1));
+			                                machineTassType.setCREATION_DATE(new Date());
+			                                machineTassType.setLAST_UPDATE_DATE(new Date());
+
+			                                machineTassTypeServiceImpl.saveMachineTassType(machineTassType);
+			                                machineTassTypes.add(machineTassType);
+			                            } else {
+			                                System.err.println("Setting description not found: " + settingDescription);
+			                                continue;
+			                            }
 			                        } else {
 			                            continue;
 			                        }
@@ -374,6 +384,7 @@ public class MachineTassTypeController {
 
 			    return response;
 			}
+
 
 		    @GetMapping("/exportMachineTassTypeExcel")
 		    public ResponseEntity<InputStreamResource> exportMachineTassTypesExcel() throws IOException {

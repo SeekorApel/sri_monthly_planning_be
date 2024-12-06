@@ -39,8 +39,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.Quadrant;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.service.QuadrantServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -51,6 +53,8 @@ public class QuadrantController {
 
 	@Autowired
 	private QuadrantServiceImpl quadrantServiceImpl;
+	@Autowired
+    private BuildingRepo buildingRepo;
 	
 	@PersistenceContext	
 	private EntityManager em;
@@ -332,13 +336,21 @@ public class QuadrantController {
 	                        }
 
 	                        Quadrant quadrant = new Quadrant();
-	                        Cell buildingIdCell = row.getCell(2);
-	                        Cell quadrantNameCell = row.getCell(3);
+	                        Cell buildingNameCell = row.getCell(2); // Assuming BUILDING_NAME is in the third column
+	                        Cell quadrantNameCell = row.getCell(3); // Assuming QUADRANT_NAME is in the fourth column
 
-	                        if (buildingIdCell != null && buildingIdCell.getCellType() == CellType.NUMERIC
-	                                && quadrantNameCell != null ) {
+	                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
+	                                && quadrantNameCell != null) {
+
+	                            // Get the building name from the Excel file
+	                            String buildingName = buildingNameCell.getStringCellValue();
+
+	                            // Find the building by name
+	                            Building building = buildingRepo.findByName(buildingName)
+	                                    .orElseThrow(() -> new ResourceNotFoundException("Building not found: " + buildingName));
+
 	                            quadrant.setQUADRANT_ID(quadrantServiceImpl.getNewId());
-	                            quadrant.setBUILDING_ID(BigDecimal.valueOf(buildingIdCell.getNumericCellValue()));
+	                            quadrant.setBUILDING_ID(building.getBUILDING_ID()); // Set the BUILDING_ID from the found Building
 	                            quadrant.setQUADRANT_NAME(quadrantNameCell.getStringCellValue());
 	                            quadrant.setSTATUS(BigDecimal.valueOf(1));
 	                            quadrant.setCREATION_DATE(new Date());
@@ -366,6 +378,7 @@ public class QuadrantController {
 
 	    return response;
 	}
+
 
 
     @GetMapping("/exportQuadrantsExcel")

@@ -23,4 +23,8 @@ public interface MachineTassTypeRepo extends JpaRepository<MachineTassType, Stri
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINETASSTYPE WHERE STATUS = 1", nativeQuery = true)
 	List<MachineTassType> findMachineTassTypeActive();
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINETASSTYPE WHERE DESCRIPTION = :description", nativeQuery = true)
+	Optional<MachineTassType> findByDescription(@Param("description") String description);
+
 }

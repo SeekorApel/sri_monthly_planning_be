@@ -26,4 +26,8 @@ public interface MachineCuringTypeRepo extends JpaRepository<MachineCuringType, 
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINECURINGTYPE WHERE STATUS = 1", nativeQuery = true)
 	List<MachineCuringType> findMachineCuringTypeActive();
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINECURINGTYPE WHERE DESCRIPTION = :description", nativeQuery = true)
+	Optional<MachineCuringType> findByDescription(@Param("description") String description);
+
 }

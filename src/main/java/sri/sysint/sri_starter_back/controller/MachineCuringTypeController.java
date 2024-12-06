@@ -41,6 +41,8 @@ import com.auth0.jwt.algorithms.Algorithm;
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.model.Setting;
+import sri.sysint.sri_starter_back.repository.SettingRepo;
 import sri.sysint.sri_starter_back.service.MachineCuringTypeServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -51,7 +53,8 @@ public class MachineCuringTypeController {
 
 	@Autowired
 	private MachineCuringTypeServiceImpl machineCuringTypeServiceImpl;
-	
+	@Autowired
+    private SettingRepo settingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -281,7 +284,6 @@ public class MachineCuringTypeController {
 	    }
 	}
 
-	
 	@PostMapping("/saveMachineCuringTypeExcel")
 	public Response saveMachineCuringTypesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
@@ -315,7 +317,6 @@ public class MachineCuringTypeController {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -333,16 +334,23 @@ public class MachineCuringTypeController {
 	                        MachineCuringType machineCuringType = new MachineCuringType();
 
 	                        Cell machineCuringTypeIdCell = row.getCell(1);
-	                        Cell settingIdCell = row.getCell(2);
+	                        Cell settingDescriptionCell = row.getCell(2); 
 	                        Cell descriptionCell = row.getCell(3);
 	                        Cell cavityCell = row.getCell(4);
 
-	                        if (settingIdCell != null && settingIdCell.getCellType() == CellType.NUMERIC
+	                        if (settingDescriptionCell != null && settingDescriptionCell.getCellType() == CellType.STRING
 	                                && descriptionCell != null 
 	                                && cavityCell != null && cavityCell.getCellType() == CellType.NUMERIC) {
 
+	                            String settingDescription = settingDescriptionCell.getStringCellValue();
+	                            Optional<Setting> settingOptional = settingRepo.findByDescription(settingDescription);
+	                            if (settingOptional.isPresent()) {
+	                                machineCuringType.setSETTING_ID(settingOptional.get().getSETTING_ID());
+	                            } else {
+	                                continue; 
+	                            }
+
 	                            machineCuringType.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
-	                            machineCuringType.setSETTING_ID(BigDecimal.valueOf(settingIdCell.getNumericCellValue()));
 	                            machineCuringType.setDESCRIPTION(descriptionCell.getStringCellValue());
 	                            machineCuringType.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
 	                            machineCuringType.setSTATUS(BigDecimal.valueOf(1));
@@ -371,6 +379,7 @@ public class MachineCuringTypeController {
 
 	    return response;
 	}
+
 
     @GetMapping("/exportMachineCuringTypeexcel")
     public ResponseEntity<InputStreamResource> exportMachineCuringTypesExcel() throws IOException {

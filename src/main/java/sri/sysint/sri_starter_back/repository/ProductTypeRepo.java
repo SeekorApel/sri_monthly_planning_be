@@ -27,4 +27,7 @@ public interface ProductTypeRepo extends JpaRepository<ProductType, BigDecimal>{
 	@Query(value = "SELECT * FROM SRI_IMPP_M_PRODUCTTYPE WHERE STATUS = 1", nativeQuery = true)
 	List<ProductType> findProductTypeActive();
 	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_PRODUCTTYPE WHERE CATEGORY = :category", nativeQuery = true)
+	Optional<ProductType> findByCategory(@Param("category") String category);
+
 }

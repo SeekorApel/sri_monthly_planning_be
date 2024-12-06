@@ -25,4 +25,7 @@ public interface QuadrantRepo extends JpaRepository<Quadrant, BigDecimal>{
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_QUADRANT WHERE STATUS = 1", nativeQuery = true)
 	List<Quadrant> findQuadrantActive();
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_QUADRANT WHERE QUADRANT_NAME = :name", nativeQuery = true)
+    Optional<Quadrant> findByName(@Param("name") String name);
 }

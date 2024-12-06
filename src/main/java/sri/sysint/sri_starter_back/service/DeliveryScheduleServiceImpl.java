@@ -4,8 +4,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +17,7 @@ import javax.transaction.Transactional;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -64,6 +68,15 @@ public class DeliveryScheduleServiceImpl {
             deliverySchedule.setSTATUS(BigDecimal.valueOf(1));
             deliverySchedule.setCREATION_DATE(new Date());
             deliverySchedule.setLAST_UPDATE_DATE(new Date());
+
+            LocalDateTime effectiveTime = deliverySchedule.getEFFECTIVE_TIME().toInstant()
+                    .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+            LocalDateTime dateIssued = deliverySchedule.getDATE_ISSUED().toInstant()
+                    .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+
+            deliverySchedule.setEFFECTIVE_TIME(Date.from(effectiveTime.atZone(ZoneId.of("UTC")).toInstant()));
+            deliverySchedule.setDATE_ISSUED(Date.from(dateIssued.atZone(ZoneId.of("UTC")).toInstant()));
+
             return deliveryScheduleRepo.save(deliverySchedule);
         } catch (Exception e) {
             System.err.println("Error saving deliverySchedule: " + e.getMessage());
@@ -78,8 +91,14 @@ public class DeliveryScheduleServiceImpl {
             if (currentDeliveryScheduleOpt.isPresent()) {
                 DeliverySchedule currentDeliverySchedule = currentDeliveryScheduleOpt.get();
 
-                currentDeliverySchedule.setEFFECTIVE_TIME(deliverySchedule.getEFFECTIVE_TIME());
-                currentDeliverySchedule.setDATE_ISSUED(deliverySchedule.getDATE_ISSUED());
+                LocalDateTime effectiveTime = deliverySchedule.getEFFECTIVE_TIME().toInstant()
+                        .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+                LocalDateTime dateIssued = deliverySchedule.getDATE_ISSUED().toInstant()
+                        .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+
+                currentDeliverySchedule.setEFFECTIVE_TIME(Date.from(effectiveTime.atZone(ZoneId.of("UTC")).toInstant()));
+                currentDeliverySchedule.setDATE_ISSUED(Date.from(dateIssued.atZone(ZoneId.of("UTC")).toInstant()));
+                
                 currentDeliverySchedule.setCATEGORY(deliverySchedule.getCATEGORY());
                 currentDeliverySchedule.setLAST_UPDATE_DATE(new Date());
                 currentDeliverySchedule.setLAST_UPDATED_BY(deliverySchedule.getLAST_UPDATED_BY());
@@ -175,6 +194,12 @@ public class DeliveryScheduleServiceImpl {
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+            // Create a cell style for date formatting
+            CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.cloneStyleFrom(borderStyle);
+            DataFormat dateFormat = workbook.createDataFormat();
+            dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
+
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
             }
@@ -190,22 +215,37 @@ public class DeliveryScheduleServiceImpl {
             for (DeliverySchedule ds : deliverySchedules) {
                 Row dataRow = sheet.createRow(rowIndex);
 
+                // Nomor Cell
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(rowIndex);
                 nomorCell.setCellStyle(borderStyle);
 
+                // ID Cell
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(ds.getDS_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
+                // Effective Time Cell (Date formatted)
                 Cell effectiveTimeCell = dataRow.createCell(2);
-                effectiveTimeCell.setCellValue(ds.getEFFECTIVE_TIME() != null ? ds.getEFFECTIVE_TIME().toString() : "");
-                effectiveTimeCell.setCellStyle(borderStyle);
+                if (ds.getEFFECTIVE_TIME() != null) {
+                    effectiveTimeCell.setCellValue(ds.getEFFECTIVE_TIME());
+                    effectiveTimeCell.setCellStyle(dateStyle); // Apply date format
+                } else {
+                    effectiveTimeCell.setCellValue("");
+                    effectiveTimeCell.setCellStyle(borderStyle);
+                }
 
+                // Date Issued Cell (Date formatted)
                 Cell dateIssuedCell = dataRow.createCell(3);
-                dateIssuedCell.setCellValue(ds.getDATE_ISSUED() != null ? ds.getDATE_ISSUED().toString() : "");
-                dateIssuedCell.setCellStyle(borderStyle);
+                if (ds.getDATE_ISSUED() != null) {
+                    dateIssuedCell.setCellValue(ds.getDATE_ISSUED());
+                    dateIssuedCell.setCellStyle(dateStyle); // Apply date format
+                } else {
+                    dateIssuedCell.setCellValue("");
+                    dateIssuedCell.setCellStyle(borderStyle);
+                }
 
+                // Category Cell
                 Cell categoryCell = dataRow.createCell(4);
                 categoryCell.setCellValue(ds.getCATEGORY() != null ? ds.getCATEGORY() : "");
                 categoryCell.setCellStyle(borderStyle);
@@ -224,6 +264,7 @@ public class DeliveryScheduleServiceImpl {
             out.close();
         }
     }
+
 
     
 }

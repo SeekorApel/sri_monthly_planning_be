@@ -40,8 +40,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuring;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.service.MachineCuringServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,7 +54,8 @@ public class MachineCuringController {
 
 	@Autowired
 	private MachineCuringServiceImpl machineCuringServiceImpl;
-	
+    @Autowired
+    private BuildingRepo buildingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -282,7 +285,6 @@ public class MachineCuringController {
 
 		    return response;
 		}
-
 		
 		@PostMapping("/saveMachineCuringExcel")
 		public Response saveMachineCuringExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
@@ -317,7 +319,6 @@ public class MachineCuringController {
 		                    Row row = sheet.getRow(i);
 
 		                    if (row != null) {
-
 		                        boolean isEmptyRow = true;
 
 		                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -329,24 +330,33 @@ public class MachineCuringController {
 		                        }
 
 		                        if (isEmptyRow) {
-		                            continue; 
+		                            continue;
 		                        }
 
 		                        MachineCuring machineCuring = new MachineCuring();
 		                        Cell workCenterTextCell = row.getCell(1);
-		                        Cell buildingIdCell = row.getCell(2);
+		                        Cell buildingNameCell = row.getCell(2); // BUILDING_NAME, not ID
 		                        Cell machinetype = row.getCell(4);
 		                        Cell cavityCell = row.getCell(3);
 		                        Cell statususage = row.getCell(5);
 
-
-		                        if (buildingIdCell != null && buildingIdCell.getCellType() == CellType.NUMERIC
+		                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
 		                                && cavityCell != null && cavityCell.getCellType() == CellType.NUMERIC
-				                        && statususage != null && statususage.getCellType() == CellType.NUMERIC
+		                                && statususage != null && statususage.getCellType() == CellType.NUMERIC
 		                                && workCenterTextCell != null && machinetype != null) {
 
+		                            String buildingName = buildingNameCell.getStringCellValue();
+
+		                            // Find BUILDING_ID by BUILDING_NAME
+		                            Optional<Building> buildingOptional = buildingRepo.findByName(buildingName);
+		                            if (buildingOptional.isEmpty()) {
+		                                continue;
+		                            }
+
+		                            BigDecimal buildingId = buildingOptional.get().getBUILDING_ID();
+
 		                            machineCuring.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
-		                            machineCuring.setBUILDING_ID(BigDecimal.valueOf(buildingIdCell.getNumericCellValue()));
+		                            machineCuring.setBUILDING_ID(buildingId); // Use BUILDING_ID from query
 		                            machineCuring.setMACHINE_TYPE(machinetype.getStringCellValue());
 		                            machineCuring.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
 		                            machineCuring.setSTATUS_USAGE(BigDecimal.valueOf(statususage.getNumericCellValue()));
@@ -376,6 +386,7 @@ public class MachineCuringController {
 
 		    return response;
 		}
+
 		
 	    @RequestMapping("/exportMachineCuringExcel")
 	    public ResponseEntity<InputStreamResource> exportMachineCuringExcel() throws IOException {

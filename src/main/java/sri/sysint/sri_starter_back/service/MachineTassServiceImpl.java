@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineTass;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 
 @Service
@@ -32,6 +33,9 @@ import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 public class MachineTassServiceImpl {
     @Autowired
     private MachineTassRepo machineTassRepo;
+    
+    @Autowired
+    private BuildingRepo buildingRepo;
 
     public MachineTassServiceImpl(MachineTassRepo machineTassRepo) {
         this.machineTassRepo = machineTassRepo;
@@ -143,7 +147,7 @@ public class MachineTassServiceImpl {
         String[] header = {
             "NOMOR",
             "ID_MACHINE_TASS",
-            "BUILDING_ID",
+            "BUILDING_NAME", // Mengubah BUILDING_ID menjadi BUILDING_NAME
             "FLOOR",
             "MACHINE_NUMBER",
             "TYPE",
@@ -199,9 +203,21 @@ public class MachineTassServiceImpl {
                 idCell.setCellValue(m.getID_MACHINE_TASS());
                 idCell.setCellStyle(borderStyle);
 
-                Cell buildingIdCell = dataRow.createCell(2);
-                buildingIdCell.setCellValue(m.getBUILDING_ID() != null ? m.getBUILDING_ID().doubleValue() : null);
-                buildingIdCell.setCellStyle(borderStyle);
+                // Cari nama building berdasarkan BUILDING_ID
+                String buildingName = "";
+                if (m.getBUILDING_ID() != null) {
+                    Optional<Building> buildingOpt = buildingRepo.findById(m.getBUILDING_ID());
+                    if (buildingOpt.isPresent()) {
+                        buildingName = buildingOpt.get().getBUILDING_NAME();
+                    } else {
+                        buildingName = "Unknown";  // Jika BUILDING_ID tidak ditemukan
+                    }
+                }
+
+                // Ganti BUILDING_ID dengan BUILDING_NAME
+                Cell buildingNameCell = dataRow.createCell(2);
+                buildingNameCell.setCellValue(buildingName);
+                buildingNameCell.setCellStyle(borderStyle);
 
                 Cell floorCell = dataRow.createCell(3);
                 floorCell.setCellValue(m.getFLOOR() != null ? m.getFLOOR().doubleValue() : null);
@@ -231,5 +247,6 @@ public class MachineTassServiceImpl {
             out.close();
         }
     }
+
 
 }

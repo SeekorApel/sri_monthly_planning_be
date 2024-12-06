@@ -25,4 +25,8 @@ public interface PatternRepo extends JpaRepository<Pattern, BigDecimal>{
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_PATTERN WHERE STATUS = 1", nativeQuery = true)
 	List<Pattern> findPatternActive();
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_PATTERN WHERE PATTERN_NAME = :name", nativeQuery = true)
+	Optional<Pattern> findByName(@Param("name") String name);
+
 }

@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineExtruding;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.MachineExtrudingRepo;
 
 @Service
@@ -34,7 +35,10 @@ import sri.sysint.sri_starter_back.repository.MachineExtrudingRepo;
 public class MachineExtrudingServiceImpl {
     @Autowired
     private MachineExtrudingRepo machineExtrudingRepo;
-
+    
+    @Autowired
+    private BuildingRepo buildingRepo;
+    
     public MachineExtrudingServiceImpl(MachineExtrudingRepo machineExtrudingRepo){
         this.machineExtrudingRepo = machineExtrudingRepo;
     }
@@ -151,7 +155,7 @@ public class MachineExtrudingServiceImpl {
         String[] header = {
             "NOMOR",
             "ID_MACHINE_EXT",
-            "BUILDING_ID",
+            "BUILDING_NAME",
             "TYPE"
         };
 
@@ -193,7 +197,7 @@ public class MachineExtrudingServiceImpl {
             int rowIndex = 1;
             for (MachineExtruding m : machineExtrudings) {
                 Row dataRow = sheet.createRow(rowIndex++);
-                
+
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(rowIndex - 1);
                 nomorCell.setCellStyle(borderStyle);
@@ -202,10 +206,18 @@ public class MachineExtrudingServiceImpl {
                 idCell.setCellValue(m.getID_MACHINE_EXT() != null ? m.getID_MACHINE_EXT().doubleValue() : null);
                 idCell.setCellStyle(borderStyle);
 
-                Cell buildingIdCell = dataRow.createCell(2);
-                buildingIdCell.setCellValue(m.getBUILDING_ID() != null ? m.getBUILDING_ID().doubleValue() : null);
-                buildingIdCell.setCellStyle(borderStyle);
-                
+                String buildingName = null;
+                if (m.getBUILDING_ID() != null) {
+                    Building building = buildingRepo.findById(m.getBUILDING_ID()).orElse(null);
+                    if (building != null) {
+                        buildingName = building.getBUILDING_NAME();
+                    }
+                }
+
+                Cell buildingNameCell = dataRow.createCell(2);
+                buildingNameCell.setCellValue(buildingName != null ? buildingName : "Unknown");
+                buildingNameCell.setCellStyle(borderStyle);
+
                 Cell typeCell = dataRow.createCell(3);
                 typeCell.setCellValue(m.getTYPE() != null ? m.getTYPE() : "");
                 typeCell.setCellStyle(borderStyle);
@@ -222,5 +234,6 @@ public class MachineExtrudingServiceImpl {
             out.close();
         }
     }
+
 
 }
