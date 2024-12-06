@@ -25,4 +25,7 @@ public interface BuildingRepo extends JpaRepository<Building, BigDecimal>{
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_BUILDING WHERE STATUS = 1", nativeQuery = true)
 	List<Building> findBuildingActive();
+	
+    @Query(value = "SELECT * FROM SRI_IMPP_M_BUILDING WHERE BUILDING_NAME = :name", nativeQuery = true)
+    Optional<Building> findByName(@Param("name") String name);
 }

@@ -573,8 +573,7 @@ public class DWorkDayHoursSpecificServiceImpl {
             return Optional.empty();
         }
     }
-   
-
+  
     
     private void updateOffAndSemiOff(DWorkDayHoursSpesific dWorkDayHoursSpecific, String dateWd, String description) {
         Optional<WorkDay> workDayOpt = workDayRepo.findByDDateWd(dateWd);

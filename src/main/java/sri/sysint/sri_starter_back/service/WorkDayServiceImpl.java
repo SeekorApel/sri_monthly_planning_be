@@ -15,7 +15,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.lang.reflect.Field;
 
 import javax.transaction.Transactional;
 
@@ -31,6 +33,11 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import sri.sysint.sri_starter_back.repository.DWorkDayHoursSpecificRepo;
+import sri.sysint.sri_starter_back.model.DWorkDayHoursSpesific;
+import sri.sysint.sri_starter_back.service.DWorkDayHoursSpecificServiceImpl; 
+
+
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.WorkDay;
@@ -42,8 +49,12 @@ public class WorkDayServiceImpl {
 
     @Autowired
     private WorkDayRepo workDayRepo;
+	@Autowired
+	private DWorkDayHoursSpecificRepo dWorkDayHoursSpecificRepo;
     @Autowired
     private DWorkDayHoursServiceImpl dWorkDayHoursServiceImpl; 
+    @Autowired
+    private DWorkDayHoursSpecificServiceImpl dWorkDayHoursSpecificServiceImpl; 
 
     public WorkDayServiceImpl(WorkDayRepo workDayRepo) {
         this.workDayRepo = workDayRepo;
@@ -124,7 +135,7 @@ public class WorkDayServiceImpl {
 
 
 
-    public WorkDay updateWorkDay(WorkDay workDay) {
+    public WorkDay updateWorkDay(WorkDay workDay) throws Exception {
         try {
             Optional<WorkDay> currentWorkDayOpt = workDayRepo.findById(workDay.getDATE_WD());
 
@@ -159,7 +170,8 @@ public class WorkDayServiceImpl {
                 }
 
                 updateOffAndSemiOffSU(currentWorkDay, dateWD);
-
+//                updateSpesificHour(currentWorkDay, workDay.getDATE_WD());
+                
                 currentWorkDay.setLAST_UPDATE_DATE(new Date());
                 currentWorkDay.setLAST_UPDATED_BY(workDay.getLAST_UPDATED_BY());
 
@@ -345,7 +357,7 @@ public class WorkDayServiceImpl {
         return (value != null && value.compareTo(BigDecimal.ONE) == 0) ? "v" : "";
     }
     
-    public WorkDay turnOnOvertime(String dateWd) {
+    public WorkDay turnOnOvertime(String dateWd) throws Exception {
         try {
             Optional<WorkDay> currentWorkDayOpt = workDayRepo.findByDDateWd(dateWd);
             String OT_TT_1 = ("OT_TT_1");
@@ -392,15 +404,26 @@ public class WorkDayServiceImpl {
         }
     }
    
-    public WorkDay turnOffShift(String dateWd, String shift) {
-        return updateShiftValue(dateWd, shift, BigDecimal.ZERO);
+    public WorkDay turnOffShift(String dateWd, String shift) throws Exception {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+        Date parsedDate = dateFormat.parse(dateWd); 
+        
+        WorkDay updatedWorkDay = updateShiftValue(dateWd, shift, BigDecimal.ZERO);
+//        updateSpesificHour(updatedWorkDay, parsedDate);  
+        return updatedWorkDay;
     }
 
-    public WorkDay turnOnShift(String dateWd, String shift) {
-        return updateShiftValue(dateWd, shift, BigDecimal.ONE);
+    public WorkDay turnOnShift(String dateWd, String shift) throws Exception {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+        Date parsedDate = dateFormat.parse(dateWd); 
+        
+        WorkDay updatedWorkDay = updateShiftValue(dateWd, shift, BigDecimal.ONE);
+//        updateSpesificHour(updatedWorkDay, parsedDate);  
+        return updatedWorkDay;
     }
 
-    public WorkDay updateShiftValue(String dateWd, String shift, BigDecimal newValue) {
+
+    public WorkDay updateShiftValue(String dateWd, String shift, BigDecimal newValue) throws Exception {
         try {
             Optional<WorkDay> currentWorkDayOpt = workDayRepo.findByDDateWd(dateWd);
 
@@ -445,13 +468,12 @@ public class WorkDayServiceImpl {
                         description = "OT_TT";
                         break;
                     case "OT_TT_3":
-                        currentWorkDay.setIOT_TT_3(newValue);;
+                        currentWorkDay.setIOT_TT_3(newValue);
                         description = "OT_TT";
                         break;
                     default:
                         throw new IllegalArgumentException("Invalid shift specified: " + shift);
                 }
-
                 updateOffAndSemiOff(currentWorkDay, dateWd);
 
                 return workDayRepo.save(currentWorkDay);
@@ -515,7 +537,7 @@ public class WorkDayServiceImpl {
         }
     }
 
-    private void updateOffAndSemiOff(WorkDay workDay, String dateWd) {
+    private void updateOffAndSemiOff(WorkDay workDay, String dateWd) throws Exception {
         BigDecimal shift1 = workDay.getIWD_SHIFT_1();
         BigDecimal shift2 = workDay.getIWD_SHIFT_2();
         BigDecimal shift3 = workDay.getIWD_SHIFT_3();
@@ -561,6 +583,9 @@ public class WorkDayServiceImpl {
                 workDay.setSEMI_OFF(BigDecimal.ONE);
             }
         }
+        
+      updateSpesificHour(workDay, workDay.getDATE_WD());
+
     }
 
 
@@ -568,5 +593,52 @@ public class WorkDayServiceImpl {
         // Mengubah string dateWd ke LocalDate dan mendapatkan hari dalam minggu
         LocalDate date = LocalDate.parse(dateWd, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
         return date.getDayOfWeek();
+    }
+    
+    private void updateSpesificHour(WorkDay workDay, Date dateWd) throws Exception {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+        String formattedDate = dateFormat.format(dateWd);
+
+        Map<String, String> shiftDescriptionMap = Map.of(
+            "IWD_SHIFT_1", "WD_NORMAL",
+            "IWD_SHIFT_2", "WD_NORMAL",
+            "IWD_SHIFT_3", "WD_NORMAL",
+            "IOT_TL_1", "OT_TL",
+            "IOT_TL_2", "OT_TL",
+            "IOT_TL_3", "OT_TL",
+            "IOT_TT_1", "OT_TT",
+            "IOT_TT_2", "OT_TT",
+            "IOT_TT_3", "OT_TT"
+        );
+
+        for (Map.Entry<String, String> entry : shiftDescriptionMap.entrySet()) {
+            String shiftFieldName = entry.getKey();
+            String description = entry.getValue();
+
+            try {
+                Field shiftField = WorkDay.class.getDeclaredField(shiftFieldName);
+                shiftField.setAccessible(true);
+                BigDecimal shiftValue = (BigDecimal) shiftField.get(workDay);
+
+                String startTime = "00:00";
+                String endTime = "00:00";
+                if (shiftValue != null && shiftValue.compareTo(BigDecimal.ONE) == 0) {
+                    startTime = "07:00";
+                    endTime = "15:00";
+                }
+
+                Optional<DWorkDayHoursSpesific> currentWorkHoursSpecificOpt =
+                    dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(formattedDate, description);
+
+                if (currentWorkHoursSpecificOpt.isPresent()) {
+                	System.out.println("Masuk update hours spc");
+                    DWorkDayHoursSpesific currentWorkHoursSpecific = currentWorkHoursSpecificOpt.get();
+
+                    dWorkDayHoursSpecificServiceImpl.updateShiftTimes(startTime, endTime, formattedDate, description, Integer.parseInt(shiftFieldName.split("_")[2]));
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new Exception("Error accessing field: " + shiftFieldName, e);
+            }
+        }
     }
 }

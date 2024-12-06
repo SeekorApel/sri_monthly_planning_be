@@ -40,8 +40,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.BuildingDistance;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.service.BuildingDistanceServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,7 +54,8 @@ public class BuildingDistanceController {
 
 	@Autowired
 	private BuildingDistanceServiceImpl buildingDistanceServiceImpl;
-	
+	@Autowired
+    private BuildingRepo buildingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -333,17 +336,33 @@ public class BuildingDistanceController {
 
 	                        BuildingDistance buildingDistance = new BuildingDistance();
 
-	                        // Skip the first two cells (Nomor and ID_B_DISTANCE) when reading the data
-	                        Cell buildingId1Cell = row.getCell(1);
-	                        Cell buildingId2Cell = row.getCell(2);
-	                        Cell distanceCell = row.getCell(3);
+	                        // Read BUILDING_NAME_1 and BUILDING_NAME_2 from the Excel file
+	                        Cell buildingName1Cell = row.getCell(2);
+	                        Cell buildingName2Cell = row.getCell(3);
+	                        Cell distanceCell = row.getCell(4);
 
-	                        if (buildingId1Cell != null && buildingId1Cell.getCellType() == CellType.NUMERIC
-	                                && buildingId2Cell != null && buildingId2Cell.getCellType() == CellType.NUMERIC
+	                        if (buildingName1Cell != null && buildingName1Cell.getCellType() == CellType.STRING
+	                                && buildingName2Cell != null && buildingName2Cell.getCellType() == CellType.STRING
 	                                && distanceCell != null && distanceCell.getCellType() == CellType.NUMERIC) {
+
+	                            // Find the BUILDING_ID by name for BUILDING_NAME_1
+	                            Optional<Building> building1Opt = buildingRepo.findByName(buildingName1Cell.getStringCellValue());
+	                            if (building1Opt.isPresent()) {
+	                                buildingDistance.setBUILDING_ID_1(building1Opt.get().getBUILDING_ID());
+	                            } else {
+	                                continue; // Skip this row if the building name is not found
+	                            }
+
+	                            // Find the BUILDING_ID by name for BUILDING_NAME_2
+	                            Optional<Building> building2Opt = buildingRepo.findByName(buildingName2Cell.getStringCellValue());
+	                            if (building2Opt.isPresent()) {
+	                                buildingDistance.setBUILDING_ID_2(building2Opt.get().getBUILDING_ID());
+	                            } else {
+	                                continue; // Skip this row if the building name is not found
+	                            }
+
+	                            // Set other fields
 	                            buildingDistance.setID_B_DISTANCE(buildingDistanceServiceImpl.getNewId());
-	                            buildingDistance.setBUILDING_ID_1(BigDecimal.valueOf(buildingId1Cell.getNumericCellValue()));
-	                            buildingDistance.setBUILDING_ID_2(BigDecimal.valueOf(buildingId2Cell.getNumericCellValue()));
 	                            buildingDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
 	                            buildingDistance.setSTATUS(BigDecimal.valueOf(1));
 	                            buildingDistance.setCREATION_DATE(new Date());
@@ -352,7 +371,7 @@ public class BuildingDistanceController {
 	                            buildingDistanceServiceImpl.saveBuildingDistance(buildingDistance);
 	                            buildingDistances.add(buildingDistance);
 	                        } else {
-	                            continue;
+	                            continue; // Skip the row if necessary data is missing or invalid
 	                        }
 	                    }
 	                }
@@ -371,6 +390,7 @@ public class BuildingDistanceController {
 
 	    return response;
 	}
+
 
 	
     @RequestMapping("/exportBuildingDistancesExcel")

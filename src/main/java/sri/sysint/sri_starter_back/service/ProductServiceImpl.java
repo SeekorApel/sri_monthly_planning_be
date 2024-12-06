@@ -25,8 +25,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.Pattern;
 import sri.sysint.sri_starter_back.model.Product;
+import sri.sysint.sri_starter_back.model.ProductType;
+import sri.sysint.sri_starter_back.repository.PatternRepo;
 import sri.sysint.sri_starter_back.repository.ProductRepo;
+import sri.sysint.sri_starter_back.repository.ProductTypeRepo;
+import sri.sysint.sri_starter_back.repository.SizeRepo;
 
 @Service
 @Transactional
@@ -34,6 +39,12 @@ public class ProductServiceImpl {
 	
 	@Autowired
     private ProductRepo productRepo;
+	
+	@Autowired
+    private PatternRepo patternRepo;
+	
+	@Autowired
+    private ProductTypeRepo productTypeRepo;
 	
     public ProductServiceImpl(ProductRepo productRepo){
         this.productRepo = productRepo;
@@ -156,14 +167,14 @@ public class ProductServiceImpl {
         return byteArrayInputStream;
     }
     
-    private ByteArrayInputStream dataToExcel(List<Product> products) throws IOException {
+    private ByteArrayInputStream dataToExcel(List<Product> products) throws IOException { 
         String[] header = {
             "NOMOR",
             "PART_NUMBER",
             "ITEM_CURING",
-            "PATTERN_ID",
+            "PATTERN_NAME",  // Diganti dari PATTERN_ID menjadi PATTERN_NAME
             "SIZE_ID",
-            "PRODUCT_TYPE_ID",
+            "CATEGORY",  // Diganti dari PRODUCT_TYPE_ID menjadi CATEGORY
             "DESCRIPTION",
             "RIM",
             "WIB_TUBE",
@@ -213,62 +224,84 @@ public class ProductServiceImpl {
             int rowIndex = 1;
             for (Product p : products) {
                 Row dataRow = sheet.createRow(rowIndex++);
+
+                // Nomor
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(rowIndex - 1);
                 nomorCell.setCellStyle(borderStyle);
 
+                // PART_NUMBER
                 Cell partNumberCell = dataRow.createCell(1);
                 partNumberCell.setCellValue(p.getPART_NUMBER().doubleValue());
                 partNumberCell.setCellStyle(borderStyle);
 
+                // ITEM_CURING
                 Cell itemCuringCell = dataRow.createCell(2);
                 itemCuringCell.setCellValue(p.getITEM_CURING() != null ? p.getITEM_CURING() : "");
                 itemCuringCell.setCellStyle(borderStyle);
 
-                Cell patternIdCell = dataRow.createCell(3);
-                patternIdCell.setCellValue(p.getPATTERN_ID() != null ? p.getPATTERN_ID().doubleValue() : null);
-                patternIdCell.setCellStyle(borderStyle);
+                // PATTERN_NAME
+                Cell patternNameCell = dataRow.createCell(3);
+                if (p.getPATTERN_ID() != null) {
+                    Optional<Pattern> pattern = patternRepo.findById(p.getPATTERN_ID());
+                    patternNameCell.setCellValue(pattern.isPresent() ? pattern.get().getPATTERN_NAME() : "");
+                }
+                patternNameCell.setCellStyle(borderStyle);
 
+                // SIZE_ID (still SIZE_ID)
                 Cell sizeIdCell = dataRow.createCell(4);
                 sizeIdCell.setCellValue(p.getSIZE_ID() != null ? p.getSIZE_ID() : "");
                 sizeIdCell.setCellStyle(borderStyle);
 
-                Cell productTypeIdCell = dataRow.createCell(5);
-                productTypeIdCell.setCellValue(p.getPRODUCT_TYPE_ID() != null ? p.getPRODUCT_TYPE_ID().doubleValue() : null);
-                productTypeIdCell.setCellStyle(borderStyle);
+                // CATEGORY (PRODUCT_TYPE_ID -> CATEGORY)
+                Cell categoryCell = dataRow.createCell(5);
+                if (p.getPRODUCT_TYPE_ID() != null) {
+                    Optional<ProductType> productType = productTypeRepo.findById(p.getPRODUCT_TYPE_ID());
+                    categoryCell.setCellValue(productType.isPresent() ? productType.get().getCATEGORY() : "");
+                }
+                categoryCell.setCellStyle(borderStyle);
 
+                // DESCRIPTION
                 Cell descriptionCell = dataRow.createCell(6);
                 descriptionCell.setCellValue(p.getDESCRIPTION() != null ? p.getDESCRIPTION() : "");
                 descriptionCell.setCellStyle(borderStyle);
 
+                // RIM
                 Cell rimCell = dataRow.createCell(7);
                 rimCell.setCellValue(p.getRIM() != null ? p.getRIM().doubleValue() : null);
                 rimCell.setCellStyle(borderStyle);
 
+                // WIB_TUBE
                 Cell wibeTubeCell = dataRow.createCell(8);
                 wibeTubeCell.setCellValue(p.getWIB_TUBE() != null ? p.getWIB_TUBE() : "");
                 wibeTubeCell.setCellStyle(borderStyle);
 
+                // ITEM_ASSY
                 Cell itemAssyCell = dataRow.createCell(9);
                 itemAssyCell.setCellValue(p.getITEM_ASSY() != null ? p.getITEM_ASSY() : "");
                 itemAssyCell.setCellStyle(borderStyle);
 
+                // ITEM_EXT
                 Cell itemExtCell = dataRow.createCell(10);
                 itemExtCell.setCellValue(p.getITEM_EXT() != null ? p.getITEM_EXT() : "");
                 itemExtCell.setCellStyle(borderStyle);
 
+                // EXT_DESCRIPTION
                 Cell extDescriptionCell = dataRow.createCell(11);
                 extDescriptionCell.setCellValue(p.getEXT_DESCRIPTION() != null ? p.getEXT_DESCRIPTION() : "");
                 extDescriptionCell.setCellStyle(borderStyle);
 
+                // QTY_PER_RAK
                 Cell qtyPerRakCell = dataRow.createCell(12);
                 qtyPerRakCell.setCellValue(p.getQTY_PER_RAK() != null ? p.getQTY_PER_RAK().doubleValue() : null);
                 qtyPerRakCell.setCellStyle(borderStyle);
 
+                // UPPER_CONSTANT
                 Cell upperConstantCell = dataRow.createCell(13);
                 upperConstantCell.setCellValue(p.getUPPER_CONSTANT() != null ? p.getUPPER_CONSTANT().doubleValue() : null);
                 upperConstantCell.setCellStyle(borderStyle);
 
+                // LOWER_CONSTANT
                 Cell lowerConstantCell = dataRow.createCell(14);
                 lowerConstantCell.setCellValue(p.getLOWER_CONSTANT() != null ? p.getLOWER_CONSTANT().doubleValue() : null);
                 lowerConstantCell.setCellStyle(borderStyle);

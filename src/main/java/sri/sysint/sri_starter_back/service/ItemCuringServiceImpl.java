@@ -139,7 +139,7 @@ public class ItemCuringServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<ItemCuring> itemCurings) throws IOException {
-        String[] header = {"ITEM_CURING", "KAPA_PER_MOULD", "NUMBER_OF_MOULD", "MACHINE_TYPE", "SPARE_MOULD", "MOULD_PLAN"}; // Define headers for Excel
+        String[] header = {"NOMOR", "ITEM_CURING", "KAPA_PER_MOULD", "NUMBER_OF_MOULD", "MACHINE_TYPE", "SPARE_MOULD", "MOULD_PLAN"}; // Updated header
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -187,32 +187,39 @@ public class ItemCuringServiceImpl {
             for (ItemCuring item : itemCurings) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
+                // NOMOR (Serial number)
+                Cell nomorCell = dataRow.createCell(0);
+                nomorCell.setCellValue(rowIndex - 1); // Starting from 1, incrementing for each row
+                nomorCell.setCellStyle(borderStyle);
+
                 // ITEM_CURING
-                Cell idCell = dataRow.createCell(0);
+                Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(item.getITEM_CURING());
                 idCell.setCellStyle(borderStyle);
 
                 // KAPA_PER_MOULD
-                Cell kapaCell = dataRow.createCell(1);
-                kapaCell.setCellValue(item.getKAPA_PER_MOULD() != null ? item.getKAPA_PER_MOULD().toString() : "");
+                Cell kapaCell = dataRow.createCell(2);
+                kapaCell.setCellValue(item.getKAPA_PER_MOULD() != null ? item.getKAPA_PER_MOULD().doubleValue() : null);
                 kapaCell.setCellStyle(borderStyle);
 
                 // NUMBER_OF_MOULD
-                Cell numberOfMouldCell = dataRow.createCell(2);
-                numberOfMouldCell.setCellValue(item.getNUMBER_OF_MOULD() != null ? item.getNUMBER_OF_MOULD().toString() : "");
+                Cell numberOfMouldCell = dataRow.createCell(3);
+                numberOfMouldCell.setCellValue(item.getNUMBER_OF_MOULD() != null ? item.getNUMBER_OF_MOULD().doubleValue() : null);
                 numberOfMouldCell.setCellStyle(borderStyle);
 
                 // MACHINE_TYPE
-                Cell machineTypeCell = dataRow.createCell(3);
+                Cell machineTypeCell = dataRow.createCell(4);
                 machineTypeCell.setCellValue(item.getMACHINE_TYPE() != null ? item.getMACHINE_TYPE() : "");
                 machineTypeCell.setCellStyle(borderStyle);
-                
-                Cell spareMouldCell = dataRow.createCell(4);
-                spareMouldCell.setCellValue(item.getSPARE_MOULD() != null ? item.getSPARE_MOULD().toString() : "");
+
+                // SPARE_MOULD
+                Cell spareMouldCell = dataRow.createCell(5);
+                spareMouldCell.setCellValue(item.getSPARE_MOULD() != null ? item.getSPARE_MOULD().doubleValue() : null);
                 spareMouldCell.setCellStyle(borderStyle);
-                
-                Cell mouldPlanCell = dataRow.createCell(5);
-                mouldPlanCell.setCellValue(item.getMOULD_MONTHLY_PLAN() != null ? item.getMOULD_MONTHLY_PLAN().toString() : "");
+
+                // MOULD_PLAN
+                Cell mouldPlanCell = dataRow.createCell(6);
+                mouldPlanCell.setCellValue(item.getMOULD_MONTHLY_PLAN() != null ? item.getMOULD_MONTHLY_PLAN().doubleValue() : 0);
                 mouldPlanCell.setCellStyle(borderStyle);
             }
 
@@ -226,5 +233,6 @@ public class ItemCuringServiceImpl {
             out.close();
         }
     }
+
 
 }

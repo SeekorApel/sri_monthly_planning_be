@@ -26,7 +26,9 @@ import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineTassType;
+import sri.sysint.sri_starter_back.model.Setting;
 import sri.sysint.sri_starter_back.repository.MachineTassTypeRepo;
+import sri.sysint.sri_starter_back.repository.SettingRepo;
 
 
 @Service
@@ -34,7 +36,8 @@ import sri.sysint.sri_starter_back.repository.MachineTassTypeRepo;
 public class MachineTassTypeServiceImpl {
 	@Autowired
 	private MachineTassTypeRepo machineTassTypeRepo;
-
+	@Autowired
+	private SettingRepo settingRepo;
 	public MachineTassTypeServiceImpl(MachineTassTypeRepo machineTassTypeRepo) {
         this.machineTassTypeRepo = machineTassTypeRepo;
     }
@@ -137,7 +140,7 @@ public class MachineTassTypeServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<MachineTassType> machineTassTypes) throws IOException {
-        String[] header = { "NOMOR", "MACHINETASSTYPE_ID", "SETTING_ID", "DESCRIPTION" };
+        String[] header = { "NOMOR", "MACHINETASSTYPE_ID", "SETTING_DESCRIPTION", "DESCRIPTION" };
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -188,9 +191,19 @@ public class MachineTassTypeServiceImpl {
                 idCell.setCellValue(mt.getMACHINETASSTYPE_ID());
                 idCell.setCellStyle(borderStyle);
 
-                Cell settingIdCell = dataRow.createCell(2);
-                settingIdCell.setCellValue(mt.getSETTING_ID() != null ? mt.getSETTING_ID().doubleValue() : null);
-                settingIdCell.setCellStyle(borderStyle);
+                Cell settingDescriptionCell = dataRow.createCell(2);
+
+                if (mt.getSETTING_ID() != null) {
+                    Optional<Setting> settingOptional = settingRepo.findById(mt.getSETTING_ID());
+                    if (settingOptional.isPresent()) {
+                    	settingDescriptionCell.setCellValue(settingOptional.get().getDESCRIPTION());
+                    } else {
+                    	settingDescriptionCell.setCellValue("Unknown");
+                    }
+                } else {
+                	settingDescriptionCell.setCellValue("N/A");
+                }
+                settingDescriptionCell.setCellStyle(borderStyle);
 
                 Cell descriptionCell = dataRow.createCell(3);
                 descriptionCell.setCellValue(mt.getDESCRIPTION());

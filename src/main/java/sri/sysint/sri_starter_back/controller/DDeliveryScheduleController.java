@@ -160,6 +160,8 @@ public class DDeliveryScheduleController {
                 .getSubject();
 
             if (user != null) {
+            	dDeliverySchedule.setDATE_DS(adjustDate(dDeliverySchedule.getDATE_DS()));
+            	
                 DDeliverySchedule savedDDeliverySchedule = dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
 
                 response = new Response(
@@ -180,6 +182,19 @@ public class DDeliveryScheduleController {
         return response;
     }
 
+    private Date adjustDate(Date originalDate) {
+	    if (originalDate != null) {
+	        LocalDate localDate = originalDate.toInstant()
+	                .atZone(ZoneId.systemDefault())
+	                .toLocalDate();
+
+	        LocalDate modifiedDate = localDate.minusDays(0);
+
+	        return Date.from(modifiedDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+	    }
+	    return null;  
+	}
+    
     @PostMapping("/updateDDeliverySchedule")
     public Response updateDDeliverySchedule(final HttpServletRequest req, @RequestBody DDeliverySchedule dDeliverySchedule) throws ResourceNotFoundException {
         String header = req.getHeader("Authorization");
@@ -197,6 +212,8 @@ public class DDeliveryScheduleController {
                 .getSubject();
 
             if (user != null) {
+            	dDeliverySchedule.setDATE_DS(adjustDate(dDeliverySchedule.getDATE_DS()));
+
                 DDeliverySchedule updatedDDeliverySchedule = dDeliveryScheduleServiceImpl.updateDDeliverySchedule(dDeliverySchedule);
 
                 response = new Response(
@@ -294,85 +311,103 @@ public class DDeliveryScheduleController {
 
     @PostMapping("/saveDDeliverySchedulesExcel")
     public Response saveDDeliverySchedulesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-        if (file.isEmpty()) {
-            return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+        String header = req.getHeader("Authorization");
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new ResourceNotFoundException("JWT token not found or maybe not valid");
         }
-        
-        dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
-        Response response;
 
-        try (InputStream inputStream = file.getInputStream();
-             XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
-            
-            XSSFSheet sheet = workbook.getSheetAt(0);
-            List<DDeliverySchedule> dDeliverySchedules = new ArrayList<>();
+        String token = header.replace("Bearer ", "");
 
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row != null) {
-                    DDeliverySchedule dDeliverySchedule = new DDeliverySchedule();
-                    
-                    Cell dsIdCell = row.getCell(1);
-                    Cell partNumCell = row.getCell(2);
-                    Cell dateDsCell = row.getCell(3);
-                    Cell totalDeliveryCell = row.getCell(4);
+        try {
+            String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+                .build()
+                .verify(token)
+                .getSubject();
 
-                    if (dsIdCell != null && partNumCell != null && dateDsCell != null && totalDeliveryCell != null) {
-                        
-                        dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
+            if (user != null) {
+                if (file.isEmpty()) {
+                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+                }
 
-                        BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
-                        dDeliverySchedule.setDS_ID(dsId);
+                dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
+                Response response;
 
-                        BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
-                        dDeliverySchedule.setPART_NUM(partNum);
+                try (InputStream inputStream = file.getInputStream();
+                     XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
 
-                        try {
-                            Date dateDs;
-                            if (dateDsCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateDsCell)) {
-                                dateDs = dateDsCell.getDateCellValue();
-                            } else if (dateDsCell.getCellType() == CellType.STRING) {
-                                // Try parsing a string date if formatted as text
-                                String dateString = dateDsCell.getStringCellValue();
-                                LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
-                                dateDs = Date.from(localDate.atStartOfDay(ZoneId.of("UTC")).toInstant());
+                    XSSFSheet sheet = workbook.getSheetAt(0);
+                    List<DDeliverySchedule> dDeliverySchedules = new ArrayList<>();
+
+                    for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                        Row row = sheet.getRow(i);
+                        if (row != null) {
+                            DDeliverySchedule dDeliverySchedule = new DDeliverySchedule();
+
+                            Cell dsIdCell = row.getCell(2);
+                            Cell partNumCell = row.getCell(3);
+                            Cell dateDsCell = row.getCell(4);
+                            Cell totalDeliveryCell = row.getCell(5);
+
+                            if (dsIdCell != null && partNumCell != null && dateDsCell != null && totalDeliveryCell != null) {
+                                dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
+
+                                BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
+                                dDeliverySchedule.setDS_ID(dsId);
+
+                                BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
+                                dDeliverySchedule.setPART_NUM(partNum);
+
+                                try {
+                                    Date dateDs;
+                                    if (dateDsCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateDsCell)) {
+                                        dateDs = dateDsCell.getDateCellValue();
+                                    } else if (dateDsCell.getCellType() == CellType.STRING) {
+                                        // Parse string date if formatted as text
+                                        String dateString = dateDsCell.getStringCellValue();
+                                        LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
+                                        dateDs = Date.from(localDate.atStartOfDay(ZoneId.of("UTC")).toInstant());
+                                    } else {
+                                        continue; // Skip if date format is unrecognized
+                                    }
+
+                                    dDeliverySchedule.setDATE_DS(dateDs);
+
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    continue;
+                                }
+
+                                BigDecimal totalDelivery = BigDecimal.valueOf(totalDeliveryCell.getNumericCellValue());
+                                dDeliverySchedule.setTOTAL_DELIVERY(totalDelivery);
+
+                                dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
+                                dDeliverySchedule.setCREATION_DATE(new Date());
+                                dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
                             } else {
-                                continue; // Skip if date format is unrecognized
+                                continue; 
                             }
-                            
-                            dDeliverySchedule.setDATE_DS(dateDs);
-                            
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            continue;
+
+                            dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
+                            dDeliverySchedules.add(dDeliverySchedule);
                         }
-
-                        BigDecimal totalDelivery = BigDecimal.valueOf(totalDeliveryCell.getNumericCellValue());
-                        dDeliverySchedule.setTOTAL_DELIVERY(totalDelivery);
-
-                        dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
-                        dDeliverySchedule.setCREATION_DATE(new Date());
-                        dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
-                    } else {
-                        continue;
                     }
 
-                    dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
-                    dDeliverySchedules.add(dDeliverySchedule);
+                    response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
                 }
+
+                return response;
+            } else {
+                throw new ResourceNotFoundException("User not found");
             }
-
-            response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("JWT token is not valid or expired");
         }
-
-        return response;
     }
-
-
 
     private Date getDateFromCell(Cell cell) throws ParseException {
         if (cell == null) {

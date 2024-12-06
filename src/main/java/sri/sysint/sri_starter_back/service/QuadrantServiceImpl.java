@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.Quadrant;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.QuadrantRepo;
 
 
@@ -34,6 +35,9 @@ import sri.sysint.sri_starter_back.repository.QuadrantRepo;
 public class QuadrantServiceImpl {
 	@Autowired
     private QuadrantRepo quadrantRepo;
+	
+	@Autowired
+    private BuildingRepo buildingRepo;
 	
     public QuadrantServiceImpl(QuadrantRepo quadrantRepo){
         this.quadrantRepo = quadrantRepo;
@@ -151,7 +155,7 @@ public class QuadrantServiceImpl {
         String[] header = {
             "NOMOR",
             "QUADRANT_ID",
-            "BUILDING_ID",
+            "BUILDING_NAME",  
             "QUADRANT_NAME"
         };
 
@@ -179,10 +183,12 @@ public class QuadrantServiceImpl {
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+            // Set column width
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
             }
 
+            // Create header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -202,9 +208,19 @@ public class QuadrantServiceImpl {
                 idCell.setCellValue(q.getQUADRANT_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                Cell buildingIdCell = dataRow.createCell(2);
-                buildingIdCell.setCellValue(q.getBUILDING_ID() != null ? q.getBUILDING_ID().doubleValue() : null);
-                buildingIdCell.setCellStyle(borderStyle);
+                // Fetch building name using BUILDING_ID
+                String buildingName = null;
+                if (q.getBUILDING_ID() != null) {
+                    Building building = buildingRepo.findById(q.getBUILDING_ID()).orElse(null);
+                    if (building != null) {
+                        buildingName = building.getBUILDING_NAME();
+                    }
+                }
+
+                // Replace BUILDING_ID with BUILDING_NAME
+                Cell buildingNameCell = dataRow.createCell(2);
+                buildingNameCell.setCellValue(buildingName != null ? buildingName : "Unknown");
+                buildingNameCell.setCellStyle(borderStyle);
 
                 Cell nameCell = dataRow.createCell(3);
                 nameCell.setCellValue(q.getQUADRANT_NAME());
@@ -222,5 +238,6 @@ public class QuadrantServiceImpl {
             out.close();
         }
     }
+
 
 }

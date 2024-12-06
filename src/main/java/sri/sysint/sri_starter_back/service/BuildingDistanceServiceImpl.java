@@ -27,12 +27,15 @@ import org.springframework.stereotype.Service;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.BuildingDistance;
 import sri.sysint.sri_starter_back.repository.BuildingDistanceRepo;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 
 @Service
 @Transactional
 public class BuildingDistanceServiceImpl {
 	@Autowired
     private BuildingDistanceRepo buildingDistanceRepo;
+	@Autowired
+    private BuildingRepo buildingRepo;
 	
     public BuildingDistanceServiceImpl(BuildingDistanceRepo buildingDistanceRepo){
         this.buildingDistanceRepo = buildingDistanceRepo;
@@ -149,10 +152,10 @@ public class BuildingDistanceServiceImpl {
     
     private ByteArrayInputStream dataToExcel(List<BuildingDistance> buildingDistances) throws IOException {
         String[] header = {
-            "NOMOR",             
+            "NOMOR",              
             "ID_B_DISTANCE",
-            "BUILDING_ID_1",
-            "BUILDING_ID_2",
+            "BUILDING_NAME_1",  
+            "BUILDING_NAME_2",  
             "DISTANCE"
         };
 
@@ -181,10 +184,12 @@ public class BuildingDistanceServiceImpl {
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+            // Set column widths
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256); // 20 characters wide
             }
 
+            // Write header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -197,27 +202,46 @@ public class BuildingDistanceServiceImpl {
             for (BuildingDistance bd : buildingDistances) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
+                // Write Nomor
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(nomor++);
                 nomorCell.setCellStyle(borderStyle);
 
+                // Write ID_B_DISTANCE
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(bd.getID_B_DISTANCE().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                Cell buildingId1Cell = dataRow.createCell(2);
-                buildingId1Cell.setCellValue(bd.getBUILDING_ID_1() != null ? bd.getBUILDING_ID_1().doubleValue() : null);
-                buildingId1Cell.setCellStyle(borderStyle);
+                String buildingName1 = "";
+                if (bd.getBUILDING_ID_1() != null) {
+                    Optional<Building> building1Opt = buildingRepo.findById(bd.getBUILDING_ID_1());
+                    if (building1Opt.isPresent()) {
+                        buildingName1 = building1Opt.get().getBUILDING_NAME();
+                    }
+                }
 
-                Cell buildingId2Cell = dataRow.createCell(3);
-                buildingId2Cell.setCellValue(bd.getBUILDING_ID_2() != null ? bd.getBUILDING_ID_2().doubleValue() : null);
-                buildingId2Cell.setCellStyle(borderStyle);
+                Cell buildingName1Cell = dataRow.createCell(2);
+                buildingName1Cell.setCellValue(buildingName1);
+                buildingName1Cell.setCellStyle(borderStyle);
+
+                String buildingName2 = "";
+                if (bd.getBUILDING_ID_2() != null) {
+                    Optional<Building> building2Opt = buildingRepo.findById(bd.getBUILDING_ID_2());
+                    if (building2Opt.isPresent()) {
+                        buildingName2 = building2Opt.get().getBUILDING_NAME();
+                    }
+                }
+
+                Cell buildingName2Cell = dataRow.createCell(3);
+                buildingName2Cell.setCellValue(buildingName2);
+                buildingName2Cell.setCellStyle(borderStyle);
 
                 Cell distanceCell = dataRow.createCell(4);
                 distanceCell.setCellValue(bd.getDISTANCE() != null ? bd.getDISTANCE().doubleValue() : null);
                 distanceCell.setCellStyle(borderStyle);
             }
 
+            // Write the workbook to the output stream
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -229,5 +253,6 @@ public class BuildingDistanceServiceImpl {
             out.close();
         }
     }
+
 
 }

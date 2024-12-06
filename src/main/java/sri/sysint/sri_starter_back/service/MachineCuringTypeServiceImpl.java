@@ -26,7 +26,9 @@ import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuringType;
+import sri.sysint.sri_starter_back.model.Setting;
 import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
+import sri.sysint.sri_starter_back.repository.SettingRepo;
 
 
 @Service
@@ -34,7 +36,9 @@ import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 public class MachineCuringTypeServiceImpl {
 	@Autowired
     private MachineCuringTypeRepo machineCuringTypeRepo;
-
+	@Autowired
+    private SettingRepo settingRepo;
+	
     public MachineCuringTypeServiceImpl(MachineCuringTypeRepo machineCuringTypeRepo) {
         this.machineCuringTypeRepo = machineCuringTypeRepo;
     }
@@ -135,7 +139,7 @@ public class MachineCuringTypeServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<MachineCuringType> machineCuringTypes) throws IOException {
-        String[] header = { "NOMOR", "MACHINECURINGTYPE_ID", "SETTING_ID", "DESCRIPTION", "CAVITY" };
+        String[] header = { "NOMOR", "MACHINECURINGTYPE_ID", "SETTING_DESCRIPTION", "DESCRIPTION", "CAVITY" };
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -186,9 +190,21 @@ public class MachineCuringTypeServiceImpl {
                 idCell.setCellValue(m.getMACHINECURINGTYPE_ID());
                 idCell.setCellStyle(borderStyle);
 
-                Cell settingIdCell = dataRow.createCell(2);
-                settingIdCell.setCellValue(m.getSETTING_ID() != null ? m.getSETTING_ID().doubleValue() : null);
-                settingIdCell.setCellStyle(borderStyle);
+                String settingDescription = "";
+                if (m.getSETTING_ID() != null) {
+                    Optional<Setting> settingOpt = settingRepo.findById(m.getSETTING_ID());
+                    if (settingOpt.isPresent()) {
+                    	settingDescription = settingOpt.get().getDESCRIPTION(); 
+                    } else {
+                    	settingDescription = "Unknown"; 
+                    }
+                } else {
+                	settingDescription = "N/A"; 
+                }
+
+                Cell settingDescriptionCell = dataRow.createCell(2);
+                settingDescriptionCell.setCellValue(settingDescription);
+                settingDescriptionCell.setCellStyle(borderStyle);
 
                 Cell descriptionCell = dataRow.createCell(3);
                 descriptionCell.setCellValue(m.getDESCRIPTION());
@@ -209,8 +225,6 @@ public class MachineCuringTypeServiceImpl {
             workbook.close();
             out.close();
         }
-    }
-
-    
+    }    
     
 }

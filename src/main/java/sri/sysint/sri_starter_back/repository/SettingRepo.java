@@ -26,6 +26,9 @@ public interface SettingRepo extends JpaRepository<Setting, BigDecimal>{
 	@Query(value = "SELECT * FROM SRI_IMPP_M_SETTING WHERE STATUS = 1", nativeQuery = true)
 	List<Setting> findSettingActive();
 	
+    @Query(value = "SELECT * FROM SRI_IMPP_M_SETTING WHERE DESCRIPTION = :description", nativeQuery = true)
+    Optional<Setting> findByDescription(@Param("description") String description);
+    
 	@Query(value = "SELECT SETTING_VALUE \r\n"
 			+ "FROM SRI_IMPP_M_SETTING \r\n"
 			+ "WHERE SETTING_KEY = 'Capacity' AND STATUS = 1", nativeQuery = true)

@@ -316,14 +316,14 @@ public class CtKapaController {
 	                    if (row != null) {
 	                        CtKapa ctKapa = new CtKapa();
 
-	                        Cell itemCuringCell = row.getCell(1);
-	                        Cell typeCuringCell = row.getCell(2);
-	                        Cell descriptionCell = row.getCell(3);
-	                        Cell cycleTimeCell = row.getCell(4);
-	                        Cell shiftCell = row.getCell(5);
-	                        Cell kapaPerShiftCell = row.getCell(6);
-	                        Cell lastUpdateDataCell = row.getCell(7);
-	                        Cell machineCell = row.getCell(8);
+	                        Cell itemCuringCell = row.getCell(2);
+	                        Cell typeCuringCell = row.getCell(3);
+	                        Cell descriptionCell = row.getCell(4);
+	                        Cell cycleTimeCell = row.getCell(5);
+	                        Cell shiftCell = row.getCell(6);
+	                        Cell kapaPerShiftCell = row.getCell(7);
+	                        Cell lastUpdateDataCell = row.getCell(8);
+	                        Cell machineCell = row.getCell(9);
 
 	                        if (itemCuringCell != null && itemCuringCell.getCellType() == CellType.STRING &&
 	                            typeCuringCell != null && typeCuringCell.getCellType() == CellType.STRING &&

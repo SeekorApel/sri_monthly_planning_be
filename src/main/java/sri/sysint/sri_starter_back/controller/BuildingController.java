@@ -41,7 +41,9 @@ import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.PlantRepo;
 import sri.sysint.sri_starter_back.service.BuildingServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,6 +54,8 @@ public class BuildingController {
 
 	@Autowired
 	private BuildingServiceImpl buildingServiceImpl;
+	@Autowired
+    private PlantRepo plantRepo;
 	
 	@PersistenceContext	
 	private EntityManager em;
@@ -317,7 +321,6 @@ public class BuildingController {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -329,27 +332,37 @@ public class BuildingController {
 	                        }
 
 	                        if (isEmptyRow) {
-	                            continue; 
+	                            continue;
 	                        }
 
 	                        Building building = new Building();
-	                        Cell plantIdCell = row.getCell(2);
+	                        Cell plantNameCell = row.getCell(2);
 	                        Cell buildingNameCell = row.getCell(3);
 
-	                        if (plantIdCell != null 
-	                                && buildingNameCell != null ) {
-	                            building.setBUILDING_ID(buildingServiceImpl.getNewId());
-	                            building.setPLANT_ID(BigDecimal.valueOf(plantIdCell.getNumericCellValue()));
-	                            building.setBUILDING_NAME(buildingNameCell.getStringCellValue());
-	                            building.setSTATUS(BigDecimal.valueOf(1));
-	                            building.setCREATION_DATE(new Date());
-	                            building.setLAST_UPDATE_DATE(new Date());
+	                        if (plantNameCell != null && buildingNameCell != null) {
+	                            String plantName = plantNameCell.getStringCellValue();
 
-	                            buildingServiceImpl.saveBuilding(building);
-	                            buildings.add(building);
+	                            Optional<Plant> plantOpt = plantRepo.findByName(plantName);
+
+	                            if (plantOpt.isPresent()) {
+	                                Plant plant = plantOpt.get(); 
+	                                building.setBUILDING_ID(buildingServiceImpl.getNewId());
+	                                building.setPLANT_ID(plant.getPLANT_ID()); 
+	                                building.setBUILDING_NAME(buildingNameCell.getStringCellValue());
+	                                building.setSTATUS(BigDecimal.valueOf(1));
+	                                building.setCREATION_DATE(new Date());
+	                                building.setLAST_UPDATE_DATE(new Date());
+
+	                                buildingServiceImpl.saveBuilding(building);
+	                                buildings.add(building);
+	                            } else {
+	                                System.err.println("PLANT_NAME not found in database: " + plantName);
+	                                continue; 
+	                            }
 	                        } else {
-	                            continue;
+	                            continue; 
 	                        }
+
 	                    }
 	                }
 
@@ -367,7 +380,7 @@ public class BuildingController {
 
 	    return response;
 	}
-	
+
     @RequestMapping("/exportBuildingsExcel")
     public ResponseEntity<InputStreamResource> exportBuildingsExcel() throws IOException {
         String filename = "MASTER_BUILDING.xlsx";

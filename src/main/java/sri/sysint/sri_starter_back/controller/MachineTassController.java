@@ -40,8 +40,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineTass;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.service.MachineTassServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,7 +54,8 @@ public class MachineTassController {
 
 	@Autowired
 	private MachineTassServiceImpl machineTassServiceImpl;
-	
+    @Autowired
+    private BuildingRepo buildingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -317,9 +320,9 @@ public class MachineTassController {
 		                    Row row = sheet.getRow(i);
 
 		                    if (row != null) {
-
 		                        boolean isEmptyRow = true;
 
+		                        // Check if the row is not empty
 		                        for (int j = 0; j < row.getLastCellNum(); j++) {
 		                            Cell cell = row.getCell(j);
 		                            if (cell != null && cell.getCellType() != CellType.BLANK) {
@@ -334,20 +337,29 @@ public class MachineTassController {
 
 		                        MachineTass machineTass = new MachineTass();
 		                        Cell idMachineTassCell = row.getCell(1);
-		                        Cell buildingIdCell = row.getCell(2);
+		                        Cell buildingNameCell = row.getCell(2);  // Change to Building Name column
 		                        Cell floorCell = row.getCell(3);
 		                        Cell machineNumberCell = row.getCell(4);
 		                        Cell typeCell = row.getCell(5);
 		                        Cell workCenterTextCell = row.getCell(6);
 
-		                        if (buildingIdCell != null && buildingIdCell.getCellType() == CellType.NUMERIC
+		                        // Check if required fields are present and valid
+		                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
 		                                && floorCell != null && floorCell.getCellType() == CellType.NUMERIC
 		                                && machineNumberCell != null && machineNumberCell.getCellType() == CellType.NUMERIC
-		                                && typeCell != null 
+		                                && typeCell != null
 		                                && workCenterTextCell != null) {
 
 		                            machineTass.setID_MACHINE_TASS(idMachineTassCell.getStringCellValue());
-		                            machineTass.setBUILDING_ID(BigDecimal.valueOf(buildingIdCell.getNumericCellValue()));
+
+		                            String buildingName = buildingNameCell.getStringCellValue();
+		                            Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
+		                            if (buildingOpt.isPresent()) {
+		                                machineTass.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
+		                            } else {
+		                                machineTass.setBUILDING_ID(BigDecimal.ZERO);
+		                            }
+
 		                            machineTass.setFLOOR(BigDecimal.valueOf(floorCell.getNumericCellValue()));
 		                            machineTass.setMACHINE_NUMBER(BigDecimal.valueOf(machineNumberCell.getNumericCellValue()));
 		                            machineTass.setTYPE(typeCell.getStringCellValue());
@@ -364,10 +376,10 @@ public class MachineTassController {
 		                    }
 		                }
 
-		                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineTasses);
+		                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineTasses);
 
 		            } catch (IOException e) {
-		                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+		                return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
 		            }
 		        } else {
 		            throw new ResourceNotFoundException("User not found");
@@ -375,9 +387,8 @@ public class MachineTassController {
 		    } catch (Exception e) {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
-
-		    return response;
 		}
+
 		
 		   @RequestMapping("/exportMachineTassExcel")
 		    public ResponseEntity<InputStreamResource> exportMachineTassExcel() throws IOException {

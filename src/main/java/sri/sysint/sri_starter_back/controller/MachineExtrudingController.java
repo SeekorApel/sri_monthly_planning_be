@@ -40,8 +40,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineExtruding;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.service.MachineExtrudingServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,7 +54,8 @@ public class MachineExtrudingController {
 
 	@Autowired
 	private MachineExtrudingServiceImpl machineExtrudingServiceImpl;
-	
+    @Autowired
+    private BuildingRepo buildingRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -317,7 +320,6 @@ public class MachineExtrudingController {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -333,20 +335,29 @@ public class MachineExtrudingController {
 	                        }
 
 	                        MachineExtruding machineExtruding = new MachineExtruding();
-	                        Cell buildingIdCell = row.getCell(2);
+	                        Cell buildingNameCell = row.getCell(2);
 	                        Cell typeCell = row.getCell(3);
 
-	                        if (buildingIdCell != null && buildingIdCell.getCellType() == CellType.NUMERIC
-	                                && typeCell != null ) {
-	                            machineExtruding.setID_MACHINE_EXT(machineExtrudingServiceImpl.getNewId());
-	                            machineExtruding.setBUILDING_ID(BigDecimal.valueOf(buildingIdCell.getNumericCellValue()));
-	                            machineExtruding.setTYPE(typeCell.getStringCellValue());
-	                            machineExtruding.setSTATUS(BigDecimal.valueOf(1));
-	                            machineExtruding.setCREATION_DATE(new Date());
-	                            machineExtruding.setLAST_UPDATE_DATE(new Date());
+	                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
+	                                && typeCell != null) {
+	                            String buildingName = buildingNameCell.getStringCellValue();
+	                            Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
 
-	                            machineExtrudingServiceImpl.saveMachineExtruding(machineExtruding);
-	                            machineExtrudings.add(machineExtruding);
+	                            if (buildingOpt.isPresent()) {
+	                                machineExtruding.setID_MACHINE_EXT(machineExtrudingServiceImpl.getNewId());
+	                                machineExtruding.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
+	                                machineExtruding.setTYPE(typeCell.getStringCellValue());
+	                                machineExtruding.setSTATUS(BigDecimal.valueOf(1));
+	                                machineExtruding.setCREATION_DATE(new Date());
+	                                machineExtruding.setLAST_UPDATE_DATE(new Date());
+
+	                                machineExtrudingServiceImpl.saveMachineExtruding(machineExtruding);
+	                                machineExtrudings.add(machineExtruding);
+	                            } else {
+	                                // Skip or handle unknown building names
+	                                System.out.println("Building not found for name: " + buildingName);
+	                                continue;
+	                            }
 	                        } else {
 	                            continue;
 	                        }
@@ -367,6 +378,7 @@ public class MachineExtrudingController {
 
 	    return response;
 	}
+
 
     @RequestMapping("/exportMachineExtrudingExcel")
     public ResponseEntity<InputStreamResource> exportMachineExtrudingExcel() throws IOException {

@@ -25,7 +25,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuring;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
 
 
@@ -34,6 +36,9 @@ import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
 public class MachineCuringServiceImpl {
     @Autowired
     private MachineCuringRepo machineCuringRepo;
+    
+    @Autowired
+    private BuildingRepo buildingRepo;
 
     public MachineCuringServiceImpl(MachineCuringRepo machineCuringRepo) {
         this.machineCuringRepo = machineCuringRepo;
@@ -141,9 +146,9 @@ public class MachineCuringServiceImpl {
     
     private ByteArrayInputStream dataToExcel(List<MachineCuring> machineCurings) throws IOException {
         String[] header = {
-            "NOMOR", 
+            "NOMOR",
             "WORK_CENTER_TEXT",
-            "BUILDING_ID",
+            "BUILDING_NAME", // Update header to BUILDING_NAME
             "CAVITY",
             "MACHINE_TYPE",
             "STATUS_USAGE"
@@ -197,10 +202,21 @@ public class MachineCuringServiceImpl {
                 Cell workcentertextcell = dataRow.createCell(1);
                 workcentertextcell.setCellValue(mc.getWORK_CENTER_TEXT());
                 workcentertextcell.setCellStyle(borderStyle);
+                
+                String buildingName = "";
+                if (mc.getBUILDING_ID() != null) {
+                    Optional<Building> buildingOpt = buildingRepo.findById(mc.getBUILDING_ID());
+                    if (buildingOpt.isPresent()) {
+                        buildingName = buildingOpt.get().getBUILDING_NAME();
+                    } else {
+                        buildingName = "Unknown";  
+                    }
+                }
 
-                Cell buildingIdCell = dataRow.createCell(2);
-                buildingIdCell.setCellValue(mc.getBUILDING_ID().doubleValue());
-                buildingIdCell.setCellStyle(borderStyle);
+                // Ganti BUILDING_ID dengan BUILDING_NAME
+                Cell buildingNameCell = dataRow.createCell(2);
+                buildingNameCell.setCellValue(buildingName);
+                buildingNameCell.setCellStyle(borderStyle);
 
                 Cell cavityCell = dataRow.createCell(3);
                 cavityCell.setCellValue(mc.getCAVITY().doubleValue());
@@ -225,6 +241,5 @@ public class MachineCuringServiceImpl {
             out.close();
         }
     }
-
     
 }

@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -155,7 +157,10 @@ public class DeliveryScheduleController {
 	            .getSubject();
 
 	        if (user != null) {
-	        	DeliverySchedule savedDeliverySchedule = deliveryScheduleServiceImpl.saveDeliverySchedule(deliverySchedule);
+	            deliverySchedule.setEFFECTIVE_TIME(adjustDate(deliverySchedule.getEFFECTIVE_TIME()));
+	            deliverySchedule.setDATE_ISSUED(adjustDate(deliverySchedule.getDATE_ISSUED()));
+
+	            DeliverySchedule savedDeliverySchedule = deliveryScheduleServiceImpl.saveDeliverySchedule(deliverySchedule);
 
 	    	    response = new Response(
 	    	        new Date(),
@@ -175,6 +180,19 @@ public class DeliveryScheduleController {
 	    return response;
 	}
 	
+	private Date adjustDate(Date originalDate) {
+	    if (originalDate != null) {
+	        LocalDate localDate = originalDate.toInstant()
+	                .atZone(ZoneId.systemDefault())
+	                .toLocalDate();
+
+	        LocalDate modifiedDate = localDate.minusDays(0);
+
+	        return Date.from(modifiedDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+	    }
+	    return null;  
+	}
+	
 	@PostMapping("/updateDeliverySchedule")
 	public Response updateDeliverySchedule(final HttpServletRequest req, @RequestBody DeliverySchedule deliverySchedule) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
@@ -192,6 +210,9 @@ public class DeliveryScheduleController {
 	            .getSubject();
 
 	        if (user != null) {
+	            deliverySchedule.setEFFECTIVE_TIME(adjustDate(deliverySchedule.getEFFECTIVE_TIME()));
+	            deliverySchedule.setDATE_ISSUED(adjustDate(deliverySchedule.getDATE_ISSUED()));
+
 	        	DeliverySchedule updatedDeliverySchedule = deliveryScheduleServiceImpl.updateDeliverySchedule(deliverySchedule);
 
 	    	    response = new Response(
@@ -385,9 +406,6 @@ public class DeliveryScheduleController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
-	        
-
-	
 	
 //END - POST MAPPING
 //START - PUT MAPPING

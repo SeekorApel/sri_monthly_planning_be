@@ -39,8 +39,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.Quadrant;
 import sri.sysint.sri_starter_back.model.QuadrantDistance;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.QuadrantRepo;
 import sri.sysint.sri_starter_back.service.QuadrantDistanceServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -52,6 +54,8 @@ public class QuadrantDistanceController {
 	@Autowired
 	private QuadrantDistanceServiceImpl quadrantDistanceServiceImpl;
 	
+    @Autowired
+    private QuadrantRepo quadrantRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -286,21 +290,21 @@ public class QuadrantDistanceController {
 	
 	@PostMapping("/saveQuadrantDistancesExcel")
 	public Response saveQuadrantDistancesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-//	    String header = req.getHeader("Authorization");
-//
-//	    if (header == null || !header.startsWith("Bearer ")) {
-//	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-//	    }
-//
-//	    String token = header.replace("Bearer ", "");
-//
-//	    try {
-//	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-//	            .build()
-//	            .verify(token)
-//	            .getSubject();
-//
-//	        if (user != null) {
+	    String header = req.getHeader("Authorization");
+
+	    if (header == null || !header.startsWith("Bearer ")) {
+	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+	    }
+
+	    String token = header.replace("Bearer ", "");
+
+	    try {
+	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+	            .build()
+	            .verify(token)
+	            .getSubject();
+
+	        if (user != null) {
 	            if (file.isEmpty()) {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
@@ -319,6 +323,7 @@ public class QuadrantDistanceController {
 	                    if (row != null) {
 	                        boolean isEmptyRow = true;
 
+	                        // Check if row is empty
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
 	                            Cell cell = row.getCell(j);
 	                            if (cell != null && cell.getCellType() != CellType.BLANK) {
@@ -333,19 +338,34 @@ public class QuadrantDistanceController {
 
 	                        QuadrantDistance quadrantDistance = new QuadrantDistance();
 
-	                        // Skip the first two cells (Nomor and ID_Q_DISTANCE) when reading the data
-	                        Cell quadrantId1Cell = row.getCell(1);
-	                        Cell quadrantId2Cell = row.getCell(2);
-	                        Cell distanceCell = row.getCell(3);
+	                        Cell quadrantName1Cell = row.getCell(2);
+	                        Cell quadrantName2Cell = row.getCell(3);
+	                        Cell distanceCell = row.getCell(4);
 
-	                        if (quadrantId1Cell != null && quadrantId1Cell.getCellType() == CellType.NUMERIC
-	                                && quadrantId2Cell != null && quadrantId2Cell.getCellType() == CellType.NUMERIC
+	                        if (quadrantName1Cell != null && quadrantName1Cell.getCellType() == CellType.STRING
+	                                && quadrantName2Cell != null && quadrantName2Cell.getCellType() == CellType.STRING
 	                                && distanceCell != null && distanceCell.getCellType() == CellType.NUMERIC) {
 
-	                            quadrantDistance.setID_Q_DISTANCE(quadrantDistanceServiceImpl.getNewId());
-	                            quadrantDistance.setQUADRANT_ID_1(BigDecimal.valueOf(quadrantId1Cell.getNumericCellValue()));
-	                            quadrantDistance.setQUADRANT_ID_2(BigDecimal.valueOf(quadrantId2Cell.getNumericCellValue()));
+	                            String quadrantName1 = quadrantName1Cell.getStringCellValue();
+	                            Optional<Quadrant> quadrant1Opt = quadrantRepo.findByName(quadrantName1);
+
+	                            if (quadrant1Opt.isPresent()) {
+	                                quadrantDistance.setQUADRANT_ID_1(quadrant1Opt.get().getQUADRANT_ID());
+	                            } else {
+	                                quadrantDistance.setQUADRANT_ID_1(BigDecimal.ZERO);
+	                            }
+
+	                            String quadrantName2 = quadrantName2Cell.getStringCellValue();
+	                            Optional<Quadrant> quadrant2Opt = quadrantRepo.findByName(quadrantName2);
+	                            if (quadrant2Opt.isPresent()) {
+	                                quadrantDistance.setQUADRANT_ID_2(quadrant2Opt.get().getQUADRANT_ID());
+	                            } else {
+	                                quadrantDistance.setQUADRANT_ID_2(BigDecimal.ZERO);
+	                            }
+
+	                            // Set the distance
 	                            quadrantDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
+	                            quadrantDistance.setID_Q_DISTANCE(quadrantDistanceServiceImpl.getNewId());
 	                            quadrantDistance.setSTATUS(BigDecimal.valueOf(1));
 	                            quadrantDistance.setCREATION_DATE(new Date());
 	                            quadrantDistance.setLAST_UPDATE_DATE(new Date());
@@ -363,15 +383,16 @@ public class QuadrantDistanceController {
 	            } catch (IOException e) {
 	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
 	            }
-//	        } else {
-//	            throw new ResourceNotFoundException("User not found");
-//	        }
-//	    } catch (Exception e) {
-//	        throw new ResourceNotFoundException("JWT token is not valid or expired");
-//	    }
+	        } else {
+	            throw new ResourceNotFoundException("User not found");
+	        }
+	    } catch (Exception e) {
+	        throw new ResourceNotFoundException("JWT token is not valid or expired");
+	    }
 
 	    return response;
 	}
+
 
 
     @GetMapping("/exportQuadrantDistancesExcel") 

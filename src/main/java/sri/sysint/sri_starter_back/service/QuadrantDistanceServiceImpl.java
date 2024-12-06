@@ -24,15 +24,20 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.Quadrant;
 import sri.sysint.sri_starter_back.model.QuadrantDistance;
+import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.QuadrantDistanceRepo;
+import sri.sysint.sri_starter_back.repository.QuadrantRepo;
 
 @Service
 @Transactional
 public class QuadrantDistanceServiceImpl {
     @Autowired
     private QuadrantDistanceRepo quadrantDistanceRepo;
+    
+    @Autowired
+    private QuadrantRepo quadrantRepo;
     
     public QuadrantDistanceServiceImpl(QuadrantDistanceRepo quadrantDistanceRepo){
         this.quadrantDistanceRepo = quadrantDistanceRepo;
@@ -148,10 +153,10 @@ public class QuadrantDistanceServiceImpl {
     
     private ByteArrayInputStream dataToExcel(List<QuadrantDistance> quadrantDistances) throws IOException {
         String[] header = {
-            "NOMOR",  
+            "NOMOR",
             "ID_Q_DISTANCE",
-            "QUADRANT_ID_1",
-            "QUADRANT_ID_2",
+            "QUADRANT_NAME_1", 
+            "QUADRANT_NAME_2",  
             "DISTANCE"
         };
 
@@ -180,10 +185,12 @@ public class QuadrantDistanceServiceImpl {
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
+            // Set column width
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
             }
 
+            // Create header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -197,21 +204,40 @@ public class QuadrantDistanceServiceImpl {
                 Row dataRow = sheet.createRow(rowIndex++);
 
                 Cell nomorCell = dataRow.createCell(0);
-                nomorCell.setCellValue(i + 1); 
+                nomorCell.setCellValue(i + 1);
                 nomorCell.setCellStyle(borderStyle);
 
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(qd.getID_Q_DISTANCE().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                Cell quadrantId1Cell = dataRow.createCell(2);
-                quadrantId1Cell.setCellValue(qd.getQUADRANT_ID_1() != null ? qd.getQUADRANT_ID_1().doubleValue() : null);
-                quadrantId1Cell.setCellStyle(borderStyle);
+                String quadrantName1 = null;
+                if (qd.getQUADRANT_ID_1() != null) {
+                    Quadrant quadrant1 = quadrantRepo.findById(qd.getQUADRANT_ID_1()).orElse(null);
+                    if (quadrant1 != null) {
+                        quadrantName1 = quadrant1.getQUADRANT_NAME();
+                    }
+                }
 
-                Cell quadrantId2Cell = dataRow.createCell(3);
-                quadrantId2Cell.setCellValue(qd.getQUADRANT_ID_2() != null ? qd.getQUADRANT_ID_2().doubleValue() : null);
-                quadrantId2Cell.setCellStyle(borderStyle);
+                String quadrantName2 = null;
+                if (qd.getQUADRANT_ID_2() != null) {
+                    Quadrant quadrant2 = quadrantRepo.findById(qd.getQUADRANT_ID_2()).orElse(null);
+                    if (quadrant2 != null) {
+                        quadrantName2 = quadrant2.getQUADRANT_NAME();
+                    }
+                }
 
+                // Replace QUADRANT_ID_1 with QUADRANT_NAME_1
+                Cell quadrantName1Cell = dataRow.createCell(2);
+                quadrantName1Cell.setCellValue(quadrantName1 != null ? quadrantName1 : "Unknown");
+                quadrantName1Cell.setCellStyle(borderStyle);
+
+                // Replace QUADRANT_ID_2 with QUADRANT_NAME_2
+                Cell quadrantName2Cell = dataRow.createCell(3);
+                quadrantName2Cell.setCellValue(quadrantName2 != null ? quadrantName2 : "Unknown");
+                quadrantName2Cell.setCellStyle(borderStyle);
+
+                // Set distance
                 Cell distanceCell = dataRow.createCell(4);
                 distanceCell.setCellValue(qd.getDISTANCE() != null ? qd.getDISTANCE().doubleValue() : null);
                 distanceCell.setCellStyle(borderStyle);
@@ -227,5 +253,6 @@ public class QuadrantDistanceServiceImpl {
             out.close();
         }
     }
+
 
 }

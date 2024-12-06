@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.PlantRepo;
 
@@ -157,7 +158,7 @@ public class BuildingServiceImpl {
         String[] header = {
             "NOMOR",
             "BUILDING_ID",
-            "PLANT_ID",
+            "PLANT_NAME",
             "BUILDING_NAME"
         };
 
@@ -199,6 +200,7 @@ public class BuildingServiceImpl {
             int rowIndex = 1;
             for (Building b : buildings) {
                 Row dataRow = sheet.createRow(rowIndex++);
+
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(rowIndex - 1);
                 nomorCell.setCellStyle(borderStyle);
@@ -207,10 +209,17 @@ public class BuildingServiceImpl {
                 idCell.setCellValue(b.getBUILDING_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                Cell plantIdCell = dataRow.createCell(2);
-                plantIdCell.setCellValue(b.getPLANT_ID() != null ? b.getPLANT_ID().doubleValue() : null);
-                plantIdCell.setCellStyle(borderStyle);
-                
+                // Ambil PLANT_NAME berdasarkan PLANT_ID
+                String plantName = "";
+                if (b.getPLANT_ID() != null) {
+                    Plant plant = plantRepo.findById(b.getPLANT_ID()).orElse(null);
+                    plantName = (plant != null) ? plant.getPLANT_NAME() : "Unknown Plant";
+                }
+
+                Cell plantNameCell = dataRow.createCell(2);
+                plantNameCell.setCellValue(plantName);
+                plantNameCell.setCellStyle(borderStyle);
+
                 Cell nameCell = dataRow.createCell(3);
                 nameCell.setCellValue(b.getBUILDING_NAME());
                 nameCell.setCellStyle(borderStyle);
@@ -227,6 +236,5 @@ public class BuildingServiceImpl {
             out.close();
         }
     }
-
 
 }
