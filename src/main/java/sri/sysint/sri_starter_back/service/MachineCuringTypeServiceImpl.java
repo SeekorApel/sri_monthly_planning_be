@@ -139,7 +139,7 @@ public class MachineCuringTypeServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<MachineCuringType> machineCuringTypes) throws IOException {
-        String[] header = { "NOMOR", "MACHINECURINGTYPE_ID", "SETTING_DESCRIPTION", "DESCRIPTION", "CAVITY" };
+        String[] header = { "NOMOR", "MACHINECURINGTYPE_ID", "SETTING_VALUE", "DESCRIPTION", "CAVITY" };
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -194,7 +194,7 @@ public class MachineCuringTypeServiceImpl {
                 if (m.getSETTING_ID() != null) {
                     Optional<Setting> settingOpt = settingRepo.findById(m.getSETTING_ID());
                     if (settingOpt.isPresent()) {
-                    	settingDescription = settingOpt.get().getDESCRIPTION(); 
+                    	settingDescription = settingOpt.get().getSETTING_VALUE(); 
                     } else {
                     	settingDescription = "Unknown"; 
                     }

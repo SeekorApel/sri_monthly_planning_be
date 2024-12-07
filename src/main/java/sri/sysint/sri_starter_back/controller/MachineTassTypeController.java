@@ -341,14 +341,14 @@ public class MachineTassTypeController {
 			                        MachineTassType machineTassType = new MachineTassType();
 
 			                        Cell codeCell = row.getCell(1);
-			                        Cell settingDescriptionCell = row.getCell(2); // Use description instead of ID
+			                        Cell settingValueCell = row.getCell(2); // Use description instead of ID
 			                        Cell descriptionCell = row.getCell(3);
 
-			                        if (codeCell != null && settingDescriptionCell != null && descriptionCell != null) {
-			                            String settingDescription = settingDescriptionCell.getStringCellValue();
+			                        if (codeCell != null && settingValueCell != null && descriptionCell != null) {
+			                            String settingValue = settingValueCell.getStringCellValue();
 
 			                            // Find SETTING_ID by SETTING_DESCRIPTION
-			                            Optional<Setting> settingOptional = settingRepo.findByDescription(settingDescription);
+			                            Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
 
 			                            if (settingOptional.isPresent()) {
 			                                machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
@@ -361,7 +361,7 @@ public class MachineTassTypeController {
 			                                machineTassTypeServiceImpl.saveMachineTassType(machineTassType);
 			                                machineTassTypes.add(machineTassType);
 			                            } else {
-			                                System.err.println("Setting description not found: " + settingDescription);
+			                                System.err.println("Setting Value not found: " + settingValue);
 			                                continue;
 			                            }
 			                        } else {

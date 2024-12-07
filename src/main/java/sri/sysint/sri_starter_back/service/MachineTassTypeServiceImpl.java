@@ -140,7 +140,7 @@ public class MachineTassTypeServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<MachineTassType> machineTassTypes) throws IOException {
-        String[] header = { "NOMOR", "MACHINETASSTYPE_ID", "SETTING_DESCRIPTION", "DESCRIPTION" };
+        String[] header = { "NOMOR", "MACHINETASSTYPE_ID", "SETTING_VALUE", "DESCRIPTION" };
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -196,7 +196,7 @@ public class MachineTassTypeServiceImpl {
                 if (mt.getSETTING_ID() != null) {
                     Optional<Setting> settingOptional = settingRepo.findById(mt.getSETTING_ID());
                     if (settingOptional.isPresent()) {
-                    	settingDescriptionCell.setCellValue(settingOptional.get().getDESCRIPTION());
+                    	settingDescriptionCell.setCellValue(settingOptional.get().getSETTING_VALUE());
                     } else {
                     	settingDescriptionCell.setCellValue("Unknown");
                     }

@@ -334,16 +334,16 @@ public class MachineCuringTypeController {
 	                        MachineCuringType machineCuringType = new MachineCuringType();
 
 	                        Cell machineCuringTypeIdCell = row.getCell(1);
-	                        Cell settingDescriptionCell = row.getCell(2); 
+	                        Cell settingValueCell = row.getCell(2); 
 	                        Cell descriptionCell = row.getCell(3);
 	                        Cell cavityCell = row.getCell(4);
 
-	                        if (settingDescriptionCell != null && settingDescriptionCell.getCellType() == CellType.STRING
+	                        if (settingValueCell != null && settingValueCell.getCellType() == CellType.STRING
 	                                && descriptionCell != null 
 	                                && cavityCell != null && cavityCell.getCellType() == CellType.NUMERIC) {
 
-	                            String settingDescription = settingDescriptionCell.getStringCellValue();
-	                            Optional<Setting> settingOptional = settingRepo.findByDescription(settingDescription);
+	                            String settingValue = settingValueCell.getStringCellValue();
+	                            Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
 	                            if (settingOptional.isPresent()) {
 	                                machineCuringType.setSETTING_ID(settingOptional.get().getSETTING_ID());
 	                            } else {
