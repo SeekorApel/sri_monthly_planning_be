@@ -150,8 +150,8 @@ public class CuringSizeServiceImpl {
         String[] header = {
             "NOMOR",
             "CURING_SIZE_ID",
-            "MACHINECURINGTYPE_ID",
-            "SIZE_ID",
+            "MACHINECURINGTYPE",
+            "SIZE",
             "CAPACITY"
         };
 
