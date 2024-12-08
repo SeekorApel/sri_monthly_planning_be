@@ -154,8 +154,8 @@ public class MaxCapacityServiceImpl {
     private ByteArrayInputStream dataToExcel(List<MaxCapacity> maxCapacities) throws IOException {
         String[] header = {
             "NOMOR",
-            "MAX_CAP_ID",
-            "PRODUCT_ID",
+            "MAX_CAPACITY_ID",
+            "PART_NUMBER",
             "MACHINECURINGTYPE_ID",
             "CYCLE_TIME",
             "CAPACITY_SHIFT_1",

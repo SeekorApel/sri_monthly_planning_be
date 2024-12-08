@@ -7,7 +7,12 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.Duration;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,11 +68,14 @@ public class StopMachineServiceImpl {
 
     public StopMachine saveStopMachine(StopMachine stopMachine) {
         try {
-            LocalDateTime startDate = stopMachine.getDATE_PM().toInstant()
+            LocalDateTime startDate = stopMachine.getSTART_DATE().toInstant()
+                    .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+            LocalDateTime endDate = stopMachine.getEND_DATE().toInstant()
                     .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
             
-            stopMachine.setDATE_PM(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
-            stopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME()));
+            stopMachine.setSTART_DATE(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
+            stopMachine.setEND_DATE(Date.from(endDate.atZone(ZoneId.of("UTC")).toInstant()));
+            stopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME(), stopMachine.getSTART_DATE().toString(), stopMachine.getEND_DATE().toString()));
             stopMachine.setSTOP_MACHINE_ID(getNewId());
             stopMachine.setSTATUS(BigDecimal.valueOf(1));
             stopMachine.setCREATION_DATE(new Date());
@@ -86,16 +94,19 @@ public class StopMachineServiceImpl {
             if (currentStopMachineOpt.isPresent()) {
                 StopMachine currentStopMachine = currentStopMachineOpt.get();
                 
-                LocalDateTime startDate = stopMachine.getDATE_PM().toInstant()
+                LocalDateTime startDate = stopMachine.getSTART_DATE().toInstant()
+                        .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
+                LocalDateTime endDate = stopMachine.getEND_DATE().toInstant()
                         .atZone(ZoneId.of("UTC")).toLocalDateTime().withHour(17).withMinute(0).withSecond(0);
                 
                 currentStopMachine.setSTART_TIME(stopMachine.getSTART_TIME());
                 currentStopMachine.setEND_TIME(stopMachine.getEND_TIME());;
 
-                currentStopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME()));
+                currentStopMachine.setTOTAL_TIME(calculateTotalTime(stopMachine.getSTART_TIME(), stopMachine.getEND_TIME(), stopMachine.getSTART_DATE().toString(), stopMachine.getEND_DATE().toString()));
                 
-                currentStopMachine.setDATE_PM(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
-                
+                currentStopMachine.setSTART_DATE(Date.from(startDate.atZone(ZoneId.of("UTC")).toInstant()));
+                currentStopMachine.setEND_DATE(Date.from(endDate.atZone(ZoneId.of("UTC")).toInstant()));
+
                 currentStopMachine.setWORK_CENTER_TEXT(stopMachine.getWORK_CENTER_TEXT());
                 currentStopMachine.setLAST_UPDATE_DATE(new Date());
                 currentStopMachine.setLAST_UPDATED_BY(stopMachine.getLAST_UPDATED_BY());
@@ -168,7 +179,8 @@ public class StopMachineServiceImpl {
             "NOMOR", 
             "STOP_MACHINE_ID", 
             "WORK_CENTER_TEXT", 
-            "DATE_PM",
+            "START_DATE",
+            "END_DATE",
             "START_TIME",
             "END_TIME",
             "TOTAL_TIME"
@@ -242,26 +254,36 @@ public class StopMachineServiceImpl {
 
                 // STOP_MACHINE_ID column
                 Cell idCell = dataRow.createCell(1);
-                idCell.setCellValue(sm.getSTOP_MACHINE_ID() != null ? sm.getSTOP_MACHINE_ID().doubleValue() : null);  // Handle null
+                idCell.setCellValue(sm.getSTOP_MACHINE_ID() != null ? sm.getSTOP_MACHINE_ID().doubleValue() : null);  
                 idCell.setCellStyle(borderStyle);
 
                 // WORK_CENTER_TEXT column
                 Cell workCenterCell = dataRow.createCell(2);
-                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT() != null ? sm.getWORK_CENTER_TEXT() : "");  // Handle null
+                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT() != null ? sm.getWORK_CENTER_TEXT() : "");  
                 workCenterCell.setCellStyle(borderStyle);
 
                 // DATE_PM column (formatted as date)
-                Cell datePmCell = dataRow.createCell(3);
-                if (sm.getDATE_PM() != null) {
-                    datePmCell.setCellValue(sm.getDATE_PM());
-                    datePmCell.setCellStyle(dateStyle);
+                Cell startdatePmCell = dataRow.createCell(3);
+                if (sm.getSTART_DATE() != null) {
+                	startdatePmCell.setCellValue(sm.getSTART_DATE());
+                	startdatePmCell.setCellStyle(dateStyle);
                 } else {
-                    datePmCell.setCellValue("");
-                    datePmCell.setCellStyle(borderStyle);
+                	startdatePmCell.setCellValue("");
+                    startdatePmCell.setCellStyle(borderStyle);
+                }
+                
+                // DATE_PM column (formatted as date)
+                Cell enddatePmCell = dataRow.createCell(4);
+                if (sm.getEND_DATE() != null) {
+                	enddatePmCell.setCellValue(sm.getEND_DATE());
+                	enddatePmCell.setCellStyle(dateStyle);
+                } else {
+                	enddatePmCell.setCellValue("");
+                	enddatePmCell.setCellStyle(borderStyle);
                 }
 
                 // START_TIME column (formatted as time)
-                Cell startTimeCell = dataRow.createCell(4);
+                Cell startTimeCell = dataRow.createCell(5);
                 if (sm.getSTART_TIME() != null) {
                     startTimeCell.setCellValue(sm.getSTART_TIME());
                     startTimeCell.setCellStyle(timeStyle);
@@ -271,7 +293,7 @@ public class StopMachineServiceImpl {
                 }
 
                 // END_TIME column (formatted as time)
-                Cell endTimeCell = dataRow.createCell(5);
+                Cell endTimeCell = dataRow.createCell(6);
                 if (sm.getEND_TIME() != null) {
                     endTimeCell.setCellValue(sm.getEND_TIME());
                     endTimeCell.setCellStyle(timeStyle);
@@ -280,10 +302,9 @@ public class StopMachineServiceImpl {
                     endTimeCell.setCellStyle(borderStyle);
                 }
 
-                // TOTAL_TIME column (calculated as difference between END_TIME and START_TIME)
-                Cell totalTimeCell = dataRow.createCell(6);
+                Cell totalTimeCell = dataRow.createCell(7);
                 if (sm.getSTART_TIME() != null && sm.getEND_TIME() != null) {
-                    totalTimeCell.setCellValue(sm.getTOTAL_TIME().doubleValue());
+                    totalTimeCell.setCellValue(calculateTotalTimeExcel(sm.getSTART_TIME(), sm.getEND_TIME(), sm.getSTART_DATE().toString(), sm.getEND_DATE().toString()).doubleValue());
                 } else {
                     totalTimeCell.setCellValue("");
                 }
@@ -301,27 +322,104 @@ public class StopMachineServiceImpl {
             out.close();
         }
     }
-
     
     private int combineTimeWithMinutes(String timeStr) {
-        // Mengonversi string waktu "HH:mm" menjadi total menit
         String[] parts = timeStr.split(":");
         int hours = Integer.parseInt(parts[0]);
         int minutes = Integer.parseInt(parts[1]);
         return hours * 60 + minutes;
     }
-    
-    private BigDecimal calculateTotalTime(String startTimeStr, String endTimeStr) {
-        int startMinutes = combineTimeWithMinutes(startTimeStr);
-        int endMinutes = combineTimeWithMinutes(endTimeStr);
-        
-        int diffMinutes = endMinutes - startMinutes;
-        
-        if (diffMinutes < 0) {
-            diffMinutes += 24 * 60; 
+
+
+    // Method untuk menghitung total waktu
+    public BigDecimal calculateTotalTime(String startTimeStr, String endTimeStr, String startDateStr, String endDateStr) {
+        try {
+            System.out.println("startTimeStr: " + startTimeStr);
+            System.out.println("endTimeStr: " + endTimeStr);
+            System.out.println("startDateStr: " + startDateStr);
+            System.out.println("endDateStr: " + endDateStr);
+
+            // Formatter untuk format input tanggal
+            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss z yyyy");
+            
+            // Parsing string tanggal menggunakan formatter
+            ZonedDateTime startDateTimeParsed = ZonedDateTime.parse(startDateStr, inputFormatter);
+            ZonedDateTime endDateTimeParsed = ZonedDateTime.parse(endDateStr, inputFormatter);
+
+            // Ubah ke LocalDate
+            LocalDate startDate = startDateTimeParsed.toLocalDate();
+            LocalDate endDate = endDateTimeParsed.toLocalDate();
+
+            // Parsing waktu
+            LocalTime startTime = LocalTime.parse(startTimeStr); // Format: HH:mm
+            LocalTime endTime = LocalTime.parse(endTimeStr);
+
+            // Gabungkan tanggal dan waktu
+            LocalDateTime startDateTime = LocalDateTime.of(startDate, startTime);
+            LocalDateTime endDateTime = LocalDateTime.of(endDate, endTime);
+
+            // Hitung selisih waktu dalam menit
+            long totalMinutes = Duration.between(startDateTime, endDateTime).toMinutes();
+
+            // Jika totalMinutes negatif, artinya tanggal/waktu di-input salah
+            if (totalMinutes < 0) {
+                throw new IllegalArgumentException("End date and time must be after start date and time.");
+            }
+
+            System.out.println("Total Time in Minutes: " + totalMinutes);
+            return BigDecimal.valueOf(totalMinutes);
+
+        } catch (DateTimeParseException e) {
+            System.err.println("Error parsing date or time: " + e.getMessage());
+            return BigDecimal.ZERO;
+        } catch (Exception e) {
+            System.err.println("Error calculating total time: " + e.getMessage());
+            return BigDecimal.ZERO;
         }
-
-        return BigDecimal.valueOf(diffMinutes);
     }
+    
+    public BigDecimal calculateTotalTimeExcel(String startTimeStr, String endTimeStr, String startDateStr, String endDateStr) {
+        try {
+            System.out.println("startTimeStr: " + startTimeStr);
+            System.out.println("endTimeStr: " + endTimeStr);
+            System.out.println("startDateStr: " + startDateStr);
+            System.out.println("endDateStr: " + endDateStr);
 
+            // Formatter untuk format input tanggal (dengan milidetik .S)
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+            
+            // Parsing string tanggal menggunakan formatter
+            LocalDateTime startDateTimeParsed = LocalDateTime.parse(startDateStr, dateFormatter);
+            LocalDateTime endDateTimeParsed = LocalDateTime.parse(endDateStr, dateFormatter);
+
+            // Ubah waktu sesuai startTimeStr dan endTimeStr
+            LocalDate startDate = startDateTimeParsed.toLocalDate();
+            LocalDate endDate = endDateTimeParsed.toLocalDate();
+
+            LocalTime startTime = LocalTime.parse(startTimeStr); // Format: HH:mm
+            LocalTime endTime = LocalTime.parse(endTimeStr);
+
+            // Gabungkan tanggal dan waktu
+            LocalDateTime startDateTime = LocalDateTime.of(startDate, startTime);
+            LocalDateTime endDateTime = LocalDateTime.of(endDate, endTime);
+
+            // Hitung selisih waktu dalam menit
+            long totalMinutes = Duration.between(startDateTime, endDateTime).toMinutes();
+
+            // Jika totalMinutes negatif, artinya tanggal/waktu di-input salah
+            if (totalMinutes < 0) {
+                throw new IllegalArgumentException("End date and time must be after start date and time.");
+            }
+
+            System.out.println("Total Time in Minutes: " + totalMinutes);
+            return BigDecimal.valueOf(totalMinutes);
+
+        } catch (DateTimeParseException e) {
+            System.err.println("Error parsing date or time: " + e.getMessage());
+            return BigDecimal.ZERO;
+        } catch (Exception e) {
+            System.err.println("Error calculating total time: " + e.getMessage());
+            return BigDecimal.ZERO;
+        }
+    }
 }
