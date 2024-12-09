@@ -277,7 +277,7 @@ public class MarketingOrderServiceImpl {
 	    	    }
 	    	}
 
-        	            
+	    	System.out.println("Masuk sini");   
             List<Map<String, Object>> listData = detailMarketingOrderRepo.getDataTable(
 	    	        totalHKTT1, totalHKTT2, totalHKTT3,
 	    	        totalHKTL1, totalHKTL2, totalHKTL3,

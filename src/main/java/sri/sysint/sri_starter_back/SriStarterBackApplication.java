@@ -4,6 +4,7 @@ import javax.annotation.Resource;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -11,7 +12,7 @@ import sri.sysint.sri_starter_back.SriStarterBackApplication;
 import sri.sysint.sri_starter_back.service.StorageService;
 
 @SpringBootApplication
-public class SriStarterBackApplication {
+public class SriStarterBackApplication extends SpringBootServletInitializer {
 
 	@Bean
 	public BCryptPasswordEncoder bCryptPasswordEncoder(){
