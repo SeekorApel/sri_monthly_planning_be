@@ -132,7 +132,8 @@ public class StopMachineController {
         String user = validateTokenAndGetUser(req);
 
         if (user != null) {
-        	stopMachine.setDATE_PM(adjustDate(stopMachine.getDATE_PM()));
+        	stopMachine.setSTART_DATE(adjustDate(stopMachine.getSTART_DATE()));
+        	stopMachine.setEND_DATE(adjustDate(stopMachine.getEND_DATE()));
 
             StopMachine savedStopMachine = stopMachineService.saveStopMachine(stopMachine);
             response = new Response(
@@ -169,7 +170,8 @@ public class StopMachineController {
         String user = validateTokenAndGetUser(req);
 
         if (user != null) {
-        	stopMachine.setDATE_PM(adjustDate(stopMachine.getDATE_PM()));
+        	stopMachine.setSTART_DATE(adjustDate(stopMachine.getSTART_DATE()));
+        	stopMachine.setEND_DATE(adjustDate(stopMachine.getEND_DATE()));
         	
             StopMachine updatedStopMachine = stopMachineService.updateStopMachine(stopMachine);
             response = new Response(
@@ -282,19 +284,23 @@ public class StopMachineController {
                             StopMachine stopMachine = new StopMachine();
 
                             Cell workCenterCell = row.getCell(2);
-                            Cell DatePmCell = row.getCell(3);
-                            Cell startTimeCell = row.getCell(4);
-                            Cell endTimeCell = row.getCell(5);
-                            Cell totalTimeCell = row.getCell(6);
+                            Cell startDatePmCell = row.getCell(3);
+                            Cell endDatePmCell = row.getCell(4);
+                            Cell startTimeCell = row.getCell(5);
+                            Cell endTimeCell = row.getCell(6);
+                            Cell totalTimeCell = row.getCell(7);
 
                             if (workCenterCell != null) {
                                 stopMachine.setSTOP_MACHINE_ID(stopMachineService.getNewId());
                                 stopMachine.setWORK_CENTER_TEXT(workCenterCell.getStringCellValue());
 
-                                Date DatePm = getDateFromCell(DatePmCell);
+                                Date startDate = getDateFromCell(startDatePmCell);
+                                Date endDate = getDateFromCell(endDatePmCell);
+
 
                                 if (startTimeCell != null && endTimeCell != null) {
-                                    stopMachine.setDATE_PM(DatePm);
+                                    stopMachine.setSTART_DATE(startDate);
+                                    stopMachine.setEND_DATE(endDate);
                                     stopMachine.setSTART_TIME(startTimeCell.getStringCellValue());
                                     stopMachine.setEND_TIME(endTimeCell.getStringCellValue());
                                     stopMachine.setTOTAL_TIME(BigDecimal.valueOf(totalTimeCell.getNumericCellValue()));
