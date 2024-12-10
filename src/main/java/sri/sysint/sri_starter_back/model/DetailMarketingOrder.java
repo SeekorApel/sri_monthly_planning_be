@@ -88,6 +88,15 @@ public class DetailMarketingOrder {
 	@Column(name = "LOCK_STATUS_MONTH_2")
 	private BigDecimal lockStatusM2;
 	
+	@Column(name = "AR")
+	private BigDecimal ar;
+	
+	@Column(name = "DEFECT")
+	private BigDecimal defect;
+	
+	@Column(name = "REJECT")
+	private BigDecimal reject;
+	
 	@Column(name = "STATUS")
 	private BigDecimal status;
 	
@@ -137,7 +146,6 @@ public class DetailMarketingOrder {
 	}
 
 	public DetailMarketingOrder() {}
-	
 
 	public BigDecimal getDetailId() {
 		return detailId;
@@ -339,6 +347,30 @@ public class DetailMarketingOrder {
 
 	public void setLockStatusM2(BigDecimal lockStatusM2) {
 		this.lockStatusM2 = lockStatusM2;
+	}
+	
+	public BigDecimal getAr() {
+		return ar;
+	}
+
+	public void setAr(BigDecimal ar) {
+		this.ar = ar;
+	}
+
+	public BigDecimal getDefect() {
+		return defect;
+	}
+
+	public void setDefect(BigDecimal defect) {
+		this.defect = defect;
+	}
+
+	public BigDecimal getReject() {
+		return reject;
+	}
+
+	public void setReject(BigDecimal reject) {
+		this.reject = reject;
 	}
 
 	public BigDecimal getStatus() {
