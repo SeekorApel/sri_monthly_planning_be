@@ -172,9 +172,9 @@ public class ProductServiceImpl {
             "NOMOR",
             "PART_NUMBER",
             "ITEM_CURING",
-            "PATTERN_NAME",  // Diganti dari PATTERN_ID menjadi PATTERN_NAME
-            "SIZE_ID",
-            "CATEGORY",  // Diganti dari PRODUCT_TYPE_ID menjadi CATEGORY
+            "PATTERN_NAME",  
+            "SIZE",
+            "CATEGORY",  
             "DESCRIPTION",
             "RIM",
             "WIB_TUBE",

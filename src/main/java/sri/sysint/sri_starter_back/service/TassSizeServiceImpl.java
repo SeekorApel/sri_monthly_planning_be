@@ -152,8 +152,8 @@ public class TassSizeServiceImpl {
         String[] header = { 
             "NOMOR", 
             "TASSIZE_ID", 
-            "MACHINETASSTYPE_ID", 
-            "SIZE_ID", 
+            "MACHINETASSTYPE", 
+            "SIZE", 
             "CAPACITY" 
         };
 
