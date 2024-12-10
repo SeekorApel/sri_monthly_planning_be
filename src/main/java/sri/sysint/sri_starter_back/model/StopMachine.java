@@ -49,7 +49,9 @@ public class StopMachine {
 		this.WORK_CENTER_TEXT = stopMachine.getWORK_CENTER_TEXT();
 		this.START_DATE = stopMachine.getSTART_DATE();
 		this.END_DATE = stopMachine.getEND_DATE();
+		this.START_TIME = stopMachine.getSTART_TIME();
 		this.END_TIME = stopMachine.getEND_TIME();
+		this.TOTAL_TIME = stopMachine.getTOTAL_TIME();
 		this.STATUS = stopMachine.getSTATUS();
 		this.CREATION_DATE = stopMachine.getCREATION_DATE();
 		this.CREATED_BY = stopMachine.getCREATED_BY();

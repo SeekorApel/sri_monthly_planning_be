@@ -35,6 +35,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.model.StopMachine;
 import sri.sysint.sri_starter_back.repository.StopMachineRepo;
 
@@ -53,12 +54,24 @@ public class StopMachineServiceImpl {
         return stopMachineRepo.getNewId().add(BigDecimal.valueOf(1));
     }
 
-    public List<StopMachine> getAllStopMachines() {
-        Iterable<StopMachine> stopMachines = stopMachineRepo.getDataOrderId();
+    public List<StopMachine> getAllStopMachines() {        
+        Iterable<StopMachine> stopMachines = stopMachineRepo.findAll();
         List<StopMachine> stopMachineList = new ArrayList<>();
+//        for (StopMachine item : stopMachines) {
+//        	StopMachine stopMachineTemp = new StopMachine(item);
+//        	stopMachineList.add(stopMachineTemp);
+//            System.out.println(stopMachineTemp.getEND_TIME());
+//            System.out.println(stopMachineTemp.getSTART_TIME());
+//        }
+        
         for (StopMachine item : stopMachines) {
-            stopMachineList.add(new StopMachine(item));
+            System.out.println("Original Start Time: " + item.getSTART_TIME());
+            StopMachine stopMachineTemp = new StopMachine(item);
+            System.out.println("After Copy Start Time: " + stopMachineTemp.getSTART_TIME());
+            stopMachineList.add(stopMachineTemp);
         }
+
+        System.out.println(stopMachineList);
         return stopMachineList;
     }
 
