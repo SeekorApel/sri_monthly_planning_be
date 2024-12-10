@@ -156,7 +156,7 @@ public class MaxCapacityServiceImpl {
             "NOMOR",
             "MAX_CAPACITY_ID",
             "PART_NUMBER",
-            "MACHINECURINGTYPE_ID",
+            "MACHINECURINGTYPE",
             "CYCLE_TIME",
             "CAPACITY_SHIFT_1",
             "CAPACITY_SHIFT_2",

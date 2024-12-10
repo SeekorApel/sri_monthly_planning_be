@@ -139,7 +139,7 @@ public class ItemCuringServiceImpl {
     }
     
     private ByteArrayInputStream dataToExcel(List<ItemCuring> itemCurings) throws IOException {
-        String[] header = {"NOMOR", "ITEM_CURING", "KAPA_PER_MOULD", "NUMBER_OF_MOULD", "MACHINE_TYPE", "SPARE_MOULD", "MOULD_PLAN"}; // Updated header
+        String[] header = {"NOMOR", "ITEM_CURING", "KAPA_PER_MOULD", "NUMBER_OF_MOULD", "MACHINE_TYPE", "SPARE_MOULD", "MOULD_MONTHLY_PLAN"}; 
 
         Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
