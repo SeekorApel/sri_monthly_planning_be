@@ -293,6 +293,20 @@ public class MarketingOrderController {
 	    	return response;
 	    }
 	    
+	    @PostMapping("/arRejectDefectMo")
+	    public Response arDefectReject(final HttpServletRequest req, @RequestBody EditMarketingOrderMarketing marketingOrderData) throws ResourceNotFoundException{
+	    	validateToken(req);
+
+	    	int statusSaved = marketingOrderServiceImpl.ArRejectDefectMO(marketingOrderData);
+	    	
+	    	if(statusSaved == 1) {
+	    		response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), null);
+	    	}else {
+	    		response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), req.getRequestURI(), null);
+	    	}
+	    	return response;
+	    }
+	    
 		@GetMapping("/getAllMoById/{moId}")
 		public Response getAllMoById(final HttpServletRequest req, @PathVariable String moId) throws ResourceNotFoundException {
 		validateToken(req);
