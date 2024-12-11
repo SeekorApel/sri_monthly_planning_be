@@ -52,6 +52,7 @@ import sri.sysint.sri_starter_back.model.Product;
 import sri.sysint.sri_starter_back.model.ProductType;
 import sri.sysint.sri_starter_back.model.WorkDay;
 import sri.sysint.sri_starter_back.model.transaksi.EditMarketingOrderMarketing;
+import sri.sysint.sri_starter_back.model.transaksi.GetAllTypeMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
@@ -100,6 +101,8 @@ public class MarketingOrderServiceImpl {
     public BigDecimal getNewDetailMarketingOrderId() {
         return detailMarketingOrderRepo.getNewId().add(BigDecimal.valueOf(1));
     }
+    
+    
 	
 	//Add dicky
 	//GET NEW ID MO
@@ -130,6 +133,57 @@ public class MarketingOrderServiceImpl {
         }
         return moList;
     }
+    
+	//GET ALL MARKETING ORDER ONLY MONTH
+    public List<Map<String, Object>> getAllMoOnlyMonth() {
+        return marketingOrderRepo.findOnlyMonth();
+    }
+    
+    //Get FED, FDR Marketing Order
+    public GetAllTypeMarketingOrder getAllTypeMarketingOrder(String dateMoMonth0, String dateMoMonth1, String dateMoMonth2) {
+    	
+    	GetAllTypeMarketingOrder result = new GetAllTypeMarketingOrder();
+    	
+    	//Search data MO FED FDR
+    	String moIdFed = null;
+    	String moIdFdr = null;
+    	List<MarketingOrder> dataMo = findMoAllTypeByMonth(dateMoMonth0, dateMoMonth1, dateMoMonth2);
+    	
+    	//Loop cek berdasarkan type dan set marketing ordernya
+    	for (MarketingOrder mo : dataMo) {
+    		System.err.println("Test " + mo.getMoId());
+    	    if ("FDR".equals(mo.getType())) {
+    	    	moIdFdr = mo.getMoId();
+    	    	result.setMoFdr(mo);
+    	    } else if ("FED".equals(mo.getType())) {
+    	    	moIdFed = mo.getMoId();
+    	    	result.setMoFed(mo);
+    	    }
+    	}
+    	    	
+    	
+    	//Set Header & Detail FED 
+        List<HeaderMarketingOrder> hmoFed = headerMarketingOrderRepo.findByMoId(moIdFed);
+        List<DetailMarketingOrder> dmoFed = detailMarketingOrderRepo.findByMoId(moIdFed);
+        
+        result.setHeaderMarketingOrderFed(hmoFed);
+    	result.setDetailMarketingOrderFed(dmoFed);
+        
+    	//Set header & Detail FDR
+        List<HeaderMarketingOrder> hmoFdr = headerMarketingOrderRepo.findByMoId(moIdFdr);
+        List<DetailMarketingOrder> dmoFdr = detailMarketingOrderRepo.findByMoId(moIdFdr);
+    	
+    	result.setHeaderMarketingOrderFdr(hmoFdr);
+    	result.setDetailMarketingOrderFdr(dmoFdr);
+    	
+    	return result;
+    }
+    
+    public List<MarketingOrder> findMoAllTypeByMonth(String dateMoMonth0, String dateMoMonth1, String dateMoMonth2){
+    	List<MarketingOrder> data = marketingOrderRepo.findMoAllTypeByMonth(dateMoMonth0, dateMoMonth1, dateMoMonth2);
+    	return data;
+    }
+
     
     //GET ALL MARKETING ORDER LATEST BY ROLE
     public List<MarketingOrder> getAllMarketingOrderMarketing(String role) {

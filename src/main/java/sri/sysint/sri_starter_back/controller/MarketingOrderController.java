@@ -45,6 +45,7 @@ import sri.sysint.sri_starter_back.model.MarketingOrder;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.model.WorkDay;
 import sri.sysint.sri_starter_back.model.transaksi.EditMarketingOrderMarketing;
+import sri.sysint.sri_starter_back.model.transaksi.GetAllTypeMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
@@ -83,7 +84,20 @@ public class MarketingOrderController {
     
     
     //------------------------------------------MARKETING ORDER-------------------------------------
+    
+    @PostMapping("/getAllTypeMarketingOrder")
+    public Response getAllTypeMarketingOrder(final HttpServletRequest req, @RequestBody Map<String, Object> object) throws ResourceNotFoundException{
+    	validateToken(req);
+    	
+    	String moMonth0 = object.get("moMonth0").toString();
+    	String moMonth1 = object.get("moMonth1").toString();
+    	String moMonth2 = object.get("moMonth2").toString();
 
+    	GetAllTypeMarketingOrder data = marketingOrderServiceImpl.getAllTypeMarketingOrder(moMonth0, moMonth1, moMonth2);
+        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+        return response;
+    }
+    
     //GET CAPACITY 
     @GetMapping("/getCapacity")
     public Response getCapacity(final HttpServletRequest req) throws ResourceNotFoundException {
@@ -117,6 +131,14 @@ public class MarketingOrderController {
 	public Response getAllMarketingOrderLatest(final HttpServletRequest req) throws ResourceNotFoundException {
     	validateToken(req);
     	List<MarketingOrder> data = marketingOrderServiceImpl.getAllMarketingOrderLatest();
+    	response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	    return response;
+	}
+    
+    @GetMapping("/getAllMoOnlyMonth")
+	public Response getAllMoOnlyMonth(final HttpServletRequest req) throws ResourceNotFoundException {
+    	validateToken(req);
+    	List<Map<String, Object>> data = marketingOrderServiceImpl.getAllMoOnlyMonth();
     	response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
 	    return response;
 	}
