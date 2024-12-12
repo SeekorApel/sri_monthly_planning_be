@@ -28,8 +28,8 @@ public class MachineTass {
 	@Column(name = "MACHINE_NUMBER")
     private BigDecimal MACHINE_NUMBER;
 	
-    @Column(name = "TYPE")
-    private String TYPE;
+    @Column(name = "MACHINE_TASS_TYPE_ID")
+    private String MACHINE_TASS_TYPE_ID;
 	
     @Column(name = "WORK_CENTER_TEXT")
     private String WORK_CENTER_TEXT;
@@ -53,7 +53,7 @@ public class MachineTass {
 		this.BUILDING_ID = machineTass.getBUILDING_ID();
 		this.FLOOR = machineTass.getFLOOR();
 		this.MACHINE_NUMBER = machineTass.getMACHINE_NUMBER();
-		this.TYPE = machineTass.getTYPE();
+		this.MACHINE_TASS_TYPE_ID = machineTass.getMACHINE_TASS_TYPE_ID();
 		this.WORK_CENTER_TEXT = machineTass.getWORK_CENTER_TEXT();
 		this.STATUS = machineTass.getSTATUS();
 		this.CREATION_DATE = machineTass.getCREATION_DATE();
@@ -61,17 +61,16 @@ public class MachineTass {
 		this.LAST_UPDATE_DATE = machineTass.getLAST_UPDATE_DATE();
 		this.LAST_UPDATED_BY = machineTass.getLAST_UPDATED_BY();
 	}
-	
 
 	public MachineTass(String iD_MACHINE_TASS, BigDecimal bUILDING_ID, BigDecimal fLOOR, BigDecimal mACHINE_NUMBER,
-			String tYPE, String wORK_CENTER_TEXT, BigDecimal sTATUS, Date cREATION_DATE, String cREATED_BY,
-			Date lAST_UPDATE_DATE, String lAST_UPDATED_BY) {
+			String mACHINE_TASS_TYPE_ID, String wORK_CENTER_TEXT, BigDecimal sTATUS, Date cREATION_DATE,
+			String cREATED_BY, Date lAST_UPDATE_DATE, String lAST_UPDATED_BY) {
 		super();
 		ID_MACHINE_TASS = iD_MACHINE_TASS;
 		BUILDING_ID = bUILDING_ID;
 		FLOOR = fLOOR;
 		MACHINE_NUMBER = mACHINE_NUMBER;
-		TYPE = tYPE;
+		MACHINE_TASS_TYPE_ID = mACHINE_TASS_TYPE_ID;
 		WORK_CENTER_TEXT = wORK_CENTER_TEXT;
 		STATUS = sTATUS;
 		CREATION_DATE = cREATION_DATE;
@@ -112,12 +111,12 @@ public class MachineTass {
 		MACHINE_NUMBER = mACHINE_NUMBER;
 	}
 
-	public String getTYPE() {
-		return TYPE;
+	public String getMACHINE_TASS_TYPE_ID() {
+		return MACHINE_TASS_TYPE_ID;
 	}
 
-	public void setTYPE(String tYPE) {
-		TYPE = tYPE;
+	public void setMACHINE_TASS_TYPE_ID(String mACHINE_TASS_TYPE_ID) {
+		MACHINE_TASS_TYPE_ID = mACHINE_TASS_TYPE_ID;
 	}
 
 	public String getWORK_CENTER_TEXT() {
@@ -167,6 +166,8 @@ public class MachineTass {
 	public void setLAST_UPDATED_BY(String lAST_UPDATED_BY) {
 		LAST_UPDATED_BY = lAST_UPDATED_BY;
 	}
+	
+
 	
 	
 }

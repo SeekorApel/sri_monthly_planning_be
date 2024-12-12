@@ -409,7 +409,6 @@ public class WorkDayServiceImpl {
         Date parsedDate = dateFormat.parse(dateWd); 
         
         WorkDay updatedWorkDay = updateShiftValue(dateWd, shift, BigDecimal.ZERO);
-//        updateSpesificHour(updatedWorkDay, parsedDate);  
         return updatedWorkDay;
     }
 
@@ -418,7 +417,6 @@ public class WorkDayServiceImpl {
         Date parsedDate = dateFormat.parse(dateWd); 
         
         WorkDay updatedWorkDay = updateShiftValue(dateWd, shift, BigDecimal.ONE);
-//        updateSpesificHour(updatedWorkDay, parsedDate);  
         return updatedWorkDay;
     }
 
