@@ -139,6 +139,71 @@ public class MarketingOrderServiceImpl {
         return marketingOrderRepo.findOnlyMonth();
     }
     
+    public int saveArDefectReject(GetAllTypeMarketingOrder saveMarketingOrder) {
+    	String moId = "";
+        List<ItemCuring> curingList = itemCuringRepo.findAll();
+        List<Product> prodList = productRepo.findAll();
+        List<ProductType> prodTypeList = productTypeRepo.findAll();
+        
+        //Fed
+        BigDecimal fedAbM0 = BigDecimal.ZERO;
+        BigDecimal fedAbM1 = BigDecimal.ZERO;
+        BigDecimal fedAbM2 = BigDecimal.ZERO;
+        BigDecimal fedtlM0 = BigDecimal.ZERO;
+        BigDecimal fedtlM1 = BigDecimal.ZERO;
+        BigDecimal fedtlM2 = BigDecimal.ZERO;
+        BigDecimal fedttM0 = BigDecimal.ZERO;
+        BigDecimal fedttM1 = BigDecimal.ZERO;
+        BigDecimal fedttM2 = BigDecimal.ZERO;
+        String fedItemCuring = " ";
+        
+    	//Set Save MO FED
+    	moId = getLastIdMo();
+    	MarketingOrder moFed = saveMarketingOrder.getMoFed();
+    	List<HeaderMarketingOrder> hmoFed = saveMarketingOrder.getHeaderMarketingOrderFed();
+    	List<ViewDetailMarketingOrder> dmoFed = saveMarketingOrder.getDetailMarketingOrderFed();
+    	
+    	
+    	for (ViewDetailMarketingOrder detaill : dmoFed) {
+    		DetailMarketingOrder detailMoFed = new DetailMarketingOrder();
+    		BigDecimal detailId = BigDecimal.ZERO;
+    		detailId = getNewDetailMarketingOrderId();
+    		
+    		detailMoFed.setDetailId(detailId);
+    		detailMoFed.setMoId(moId);
+    		detailMoFed.setDescription(detaill.getDescription());
+    		detailMoFed.setCategory(detaill.getCategory());
+    		detailMoFed.setMachineType(detaill.getMachineType());
+    		detailMoFed.setPartNumber(detaill.getPartNumber());
+    		detailMoFed.setCapacity(detaill.getCapacity());
+    		detailMoFed.setQtyPerMould(detaill.getQtyPerMould());
+    		detailMoFed.setQtyPerRak(detaill.getQtyPerRak());
+    		detailMoFed.setMinOrder(detaill.getMinOrder());
+    		detailMoFed.setMaxCapMonth0(detaill.getMaxCapMonth0());
+    		detailMoFed.setMaxCapMonth1(detaill.getMaxCapMonth1());
+    		detailMoFed.setMaxCapMonth2(detaill.getMaxCapMonth2());
+    		detailMoFed.setInitialStock(detaill.getInitialStock());
+    		detailMoFed.setSfMonth0(detaill.getSfMonth0());
+    		detailMoFed.setSfMonth1(detaill.getSfMonth1());
+    		detailMoFed.setSfMonth2(detaill.getSfMonth2());
+    		detailMoFed.setMoMonth0(detaill.getMoMonth0());
+    		detailMoFed.setMoMonth1(detaill.getMoMonth1());
+    		detailMoFed.setMoMonth2(detaill.getMoMonth2());
+    		detailMoFed.setLockStatusM0(detaill.getLockStatusM0());
+    		detailMoFed.setLockStatusM1(detaill.getLockStatusM1());
+            detailMoFed.setLockStatusM2(detaill.getLockStatusM2());
+    		
+    	}
+    	
+    	moId = "";
+    	
+    	//Set Save MO FDR
+    	MarketingOrder moFdr = saveMarketingOrder.getMoFdr();
+    	List<HeaderMarketingOrder> hmoFdr = saveMarketingOrder.getHeaderMarketingOrderFdr();
+    	List<ViewDetailMarketingOrder> dmoFdr = saveMarketingOrder.getDetailMarketingOrderFdr();
+    	return 1;
+    }
+    
     //Get FED, FDR Marketing Order
     public GetAllTypeMarketingOrder getAllTypeMarketingOrder(String dateMoMonth0, String dateMoMonth1, String dateMoMonth2) {
     	
@@ -151,7 +216,6 @@ public class MarketingOrderServiceImpl {
     	
     	//Loop cek berdasarkan type dan set marketing ordernya
     	for (MarketingOrder mo : dataMo) {
-    		System.err.println("Test " + mo.getMoId());
     	    if ("FDR".equals(mo.getType())) {
     	    	moIdFdr = mo.getMoId();
     	    	result.setMoFdr(mo);
@@ -160,21 +224,104 @@ public class MarketingOrderServiceImpl {
     	    	result.setMoFed(mo);
     	    }
     	}
+    	
+    	//List Product Untuk Item Curing
+    	List<Product> prodList = productRepo.findAll();
     	    	
     	
     	//Set Header & Detail FED 
         List<HeaderMarketingOrder> hmoFed = headerMarketingOrderRepo.findByMoId(moIdFed);
         List<DetailMarketingOrder> dmoFed = detailMarketingOrderRepo.findByMoId(moIdFed);
+        List<ViewDetailMarketingOrder> detailResponsesFed = new ArrayList<>();
+        for (DetailMarketingOrder detail : dmoFed) {
+        	ViewDetailMarketingOrder detailResponse = new ViewDetailMarketingOrder();
+        	detailResponse.setDetailId(detail.getDetailId());
+        	detailResponse.setMoId(detail.getMoId());
+        	detailResponse.setCategory(detail.getCategory());
+        	detailResponse.setPartNumber(detail.getPartNumber());
+        	detailResponse.setDescription(detail.getDescription());
+        	detailResponse.setMachineType(detail.getMachineType());
+        	detailResponse.setCapacity(detail.getCapacity());
+        	detailResponse.setQtyPerMould(detail.getQtyPerMould());
+        	detailResponse.setQtyPerRak(detail.getQtyPerRak());
+        	detailResponse.setMinOrder(detail.getMinOrder());
+        	detailResponse.setMaxCapMonth0(detail.getMaxCapMonth0());
+        	detailResponse.setMaxCapMonth1(detail.getMaxCapMonth1());
+        	detailResponse.setMaxCapMonth2(detail.getMaxCapMonth2());
+        	detailResponse.setInitialStock(detail.getInitialStock());
+        	detailResponse.setSfMonth0(detail.getSfMonth0());
+        	detailResponse.setSfMonth1(detail.getSfMonth1());
+        	detailResponse.setSfMonth2(detail.getSfMonth2());
+        	detailResponse.setMoMonth0(detail.getMoMonth0());
+        	detailResponse.setMoMonth1(detail.getMoMonth1());
+        	detailResponse.setMoMonth2(detail.getMoMonth2());
+        	detailResponse.setPpd(detail.getPpd());
+        	detailResponse.setCav(detail.getCav());
+        	detailResponse.setLockStatusM0(detail.getLockStatusM0());
+        	detailResponse.setLockStatusM1(detail.getLockStatusM1());
+        	detailResponse.setLockStatusM2(detail.getLockStatusM2());
+
+        	String itemCuring = null; 
+        	for (Product product : prodList) {
+        	    if (product.getPART_NUMBER().equals(detail.getPartNumber())) {
+        	        itemCuring = product.getITEM_CURING(); 
+        	        break;  
+        	    }
+        	}
+
+        	detailResponse.setItemCuring(itemCuring);
+            detailResponsesFed.add(detailResponse);
+        }
         
         result.setHeaderMarketingOrderFed(hmoFed);
-    	result.setDetailMarketingOrderFed(dmoFed);
+    	result.setDetailMarketingOrderFed(detailResponsesFed);
         
     	//Set header & Detail FDR
         List<HeaderMarketingOrder> hmoFdr = headerMarketingOrderRepo.findByMoId(moIdFdr);
         List<DetailMarketingOrder> dmoFdr = detailMarketingOrderRepo.findByMoId(moIdFdr);
+        List<ViewDetailMarketingOrder> detailResponsesFdr = new ArrayList<>();
+        for (DetailMarketingOrder detail : dmoFdr) {
+        	ViewDetailMarketingOrder detailResponse = new ViewDetailMarketingOrder();
+        	detailResponse.setDetailId(detail.getDetailId());
+        	detailResponse.setMoId(detail.getMoId());
+        	detailResponse.setCategory(detail.getCategory());
+        	detailResponse.setPartNumber(detail.getPartNumber());
+        	detailResponse.setDescription(detail.getDescription());
+        	detailResponse.setMachineType(detail.getMachineType());
+        	detailResponse.setCapacity(detail.getCapacity());
+        	detailResponse.setQtyPerMould(detail.getQtyPerMould());
+        	detailResponse.setQtyPerRak(detail.getQtyPerRak());
+        	detailResponse.setMinOrder(detail.getMinOrder());
+        	detailResponse.setMaxCapMonth0(detail.getMaxCapMonth0());
+        	detailResponse.setMaxCapMonth1(detail.getMaxCapMonth1());
+        	detailResponse.setMaxCapMonth2(detail.getMaxCapMonth2());
+        	detailResponse.setInitialStock(detail.getInitialStock());
+        	detailResponse.setSfMonth0(detail.getSfMonth0());
+        	detailResponse.setSfMonth1(detail.getSfMonth1());
+        	detailResponse.setSfMonth2(detail.getSfMonth2());
+        	detailResponse.setMoMonth0(detail.getMoMonth0());
+        	detailResponse.setMoMonth1(detail.getMoMonth1());
+        	detailResponse.setMoMonth2(detail.getMoMonth2());
+        	detailResponse.setPpd(detail.getPpd());
+        	detailResponse.setCav(detail.getCav());
+        	detailResponse.setLockStatusM0(detail.getLockStatusM0());
+        	detailResponse.setLockStatusM1(detail.getLockStatusM1());
+        	detailResponse.setLockStatusM2(detail.getLockStatusM2());
+
+        	String itemCuring = null; 
+        	for (Product product : prodList) {
+        	    if (product.getPART_NUMBER().equals(detail.getPartNumber())) {
+        	        itemCuring = product.getITEM_CURING(); 
+        	        break;  
+        	    }
+        	}
+
+        	detailResponse.setItemCuring(itemCuring);
+            detailResponsesFdr.add(detailResponse);
+        }
     	
     	result.setHeaderMarketingOrderFdr(hmoFdr);
-    	result.setDetailMarketingOrderFdr(dmoFdr);
+    	result.setDetailMarketingOrderFdr(detailResponsesFdr);
     	
     	return result;
     }
@@ -298,7 +445,7 @@ public class MarketingOrderServiceImpl {
         return headerMarketingOrderRepo.findById(id);
     }
 
-    //GET/GENERATE DETAIL MARKETING ORDER FROM PARAM
+    //Show Detail Mo Add PPC di Awal
     public List<ViewDetailMarketingOrder> getDetailMarketingOrders(
     	    BigDecimal totalHKTT1, BigDecimal totalHKTT2, BigDecimal totalHKTT3,
     	    BigDecimal totalHKTL1, BigDecimal totalHKTL2, BigDecimal totalHKTL3,
@@ -318,10 +465,6 @@ public class MarketingOrderServiceImpl {
 	    	LocalDate previousMonth2 = pre_monthYear2.minusMonths(1);
 	    	monthYear2 = previousMonth2.format(formatter);
 	    	
-	    	System.out.println("1: " +monthYear0);
-	    	System.out.println("2: " +monthYear1);
-	    	System.out.println("3: " +monthYear2);
-
 	    	List<MarketingOrder> marketingOrder = marketingOrderRepo.findByMonth(monthYear0, monthYear1, monthYear2);
 
 	    	List<DetailMarketingOrder> detailMarketingOrder = new ArrayList<>();
@@ -330,8 +473,7 @@ public class MarketingOrderServiceImpl {
 	    	        detailMarketingOrder.addAll(detailMarketingOrderRepo.findByMoId(order.getMoId()));
 	    	    }
 	    	}
-
-        	            
+           
             List<Map<String, Object>> listData = detailMarketingOrderRepo.getDataTable(
 	    	        totalHKTT1, totalHKTT2, totalHKTT3,
 	    	        totalHKTL1, totalHKTL2, totalHKTL3,

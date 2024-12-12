@@ -3,6 +3,7 @@ import java.util.List;
 import sri.sysint.sri_starter_back.model.DetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.HeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.MarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 
 public class GetAllTypeMarketingOrder {
 	
@@ -10,13 +11,13 @@ public class GetAllTypeMarketingOrder {
     
     private List<HeaderMarketingOrder> headerMarketingOrderFed;
     
-    private List<DetailMarketingOrder> detailMarketingOrderFed;
+    private List<ViewDetailMarketingOrder> detailMarketingOrderFed;
     
 	private MarketingOrder moFdr;
     
     private List<HeaderMarketingOrder> headerMarketingOrderFdr;
     
-    private List<DetailMarketingOrder> detailMarketingOrderFdr;
+    private List<ViewDetailMarketingOrder> detailMarketingOrderFdr;
     
     public GetAllTypeMarketingOrder() {
     	
@@ -47,11 +48,11 @@ public class GetAllTypeMarketingOrder {
 		this.headerMarketingOrderFed = headerMarketingOrderFed;
 	}
 
-	public List<DetailMarketingOrder> getDetailMarketingOrderFed() {
+	public List<ViewDetailMarketingOrder> getDetailMarketingOrderFed() {
 		return detailMarketingOrderFed;
 	}
 
-	public void setDetailMarketingOrderFed(List<DetailMarketingOrder> detailMarketingOrderFed) {
+	public void setDetailMarketingOrderFed(List<ViewDetailMarketingOrder> detailMarketingOrderFed) {
 		this.detailMarketingOrderFed = detailMarketingOrderFed;
 	}
 
@@ -71,11 +72,11 @@ public class GetAllTypeMarketingOrder {
 		this.headerMarketingOrderFdr = headerMarketingOrderFdr;
 	}
 
-	public List<DetailMarketingOrder> getDetailMarketingOrderFdr() {
+	public List<ViewDetailMarketingOrder> getDetailMarketingOrderFdr() {
 		return detailMarketingOrderFdr;
 	}
 
-	public void setDetailMarketingOrderFdr(List<DetailMarketingOrder> detailMarketingOrderFdr) {
+	public void setDetailMarketingOrderFdr(List<ViewDetailMarketingOrder> detailMarketingOrderFdr) {
 		this.detailMarketingOrderFdr = detailMarketingOrderFdr;
 	}
     
