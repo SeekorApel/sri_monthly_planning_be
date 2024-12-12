@@ -60,8 +60,15 @@ public class SettingServiceImpl {
     
     public Setting saveSetting(Setting setting) {
         try {
+        	String settingValue = setting.getSETTING_VALUE();
+            if (settingValue != null && settingValue.contains(".")) {
+                if (!settingValue.contains(",")) {
+                    settingValue = settingValue.replace('.', ',');
+                }
+            }
             setting.setSETTING_ID(getNewId());
             setting.setSTATUS(BigDecimal.valueOf(1));
+            setting.setSETTING_VALUE(settingValue);
             setting.setCREATION_DATE(new Date());
             setting.setLAST_UPDATE_DATE(new Date());
             return settingRepo.save(setting);
@@ -76,8 +83,15 @@ public class SettingServiceImpl {
             Optional<Setting> currentSettingOpt = settingRepo.findById(setting.getSETTING_ID());
             if (currentSettingOpt.isPresent()) {
                 Setting currentSetting = currentSettingOpt.get();
+                
+                String settingValue = setting.getSETTING_VALUE();
+                if (settingValue != null && settingValue.contains(".")) {
+                    if (!settingValue.contains(",")) {
+                        settingValue = settingValue.replace('.', ',');
+                    }
+                }
                 currentSetting.setSETTING_KEY(setting.getSETTING_KEY());
-                currentSetting.setSETTING_VALUE(setting.getSETTING_VALUE());
+                currentSetting.setSETTING_VALUE(settingValue);
                 currentSetting.setDESCRIPTION(setting.getDESCRIPTION());
                 currentSetting.setLAST_UPDATE_DATE(new Date());
                 currentSetting.setLAST_UPDATED_BY(setting.getLAST_UPDATED_BY());
