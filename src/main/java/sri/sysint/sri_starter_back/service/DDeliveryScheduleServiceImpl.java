@@ -163,7 +163,7 @@ public class DDeliveryScheduleServiceImpl {
         String[] header = {
             "NOMOR",                  
             "DETAIL_DS_ID",
-            "DELIVERYSCHEDULE_ID",
+            "DELIVERYSCHEDULE",
             "PART_NUM",
             "DATE",
             "TOTAL_DELIVERY"

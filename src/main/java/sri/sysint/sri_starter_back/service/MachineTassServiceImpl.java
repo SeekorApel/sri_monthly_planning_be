@@ -78,7 +78,7 @@ public class MachineTassServiceImpl {
                 currentMachineTass.setBUILDING_ID(machineTass.getBUILDING_ID());
                 currentMachineTass.setFLOOR(machineTass.getFLOOR());
                 currentMachineTass.setMACHINE_NUMBER(machineTass.getMACHINE_NUMBER());
-                currentMachineTass.setTYPE(machineTass.getTYPE());
+                currentMachineTass.setMACHINE_TASS_TYPE_ID(machineTass.getMACHINE_TASS_TYPE_ID());
                 currentMachineTass.setWORK_CENTER_TEXT(machineTass.getWORK_CENTER_TEXT());
                 
                 currentMachineTass.setLAST_UPDATE_DATE(new Date());
@@ -147,10 +147,10 @@ public class MachineTassServiceImpl {
         String[] header = {
             "NOMOR",
             "ID_MACHINE_TASS",
-            "BUILDING_NAME", // Mengubah BUILDING_ID menjadi BUILDING_NAME
+            "BUILDING_NAME", 
             "FLOOR",
             "MACHINE_NUMBER",
-            "TYPE",
+            "MACHINE_TASS_TYPE",
             "WORK_CENTER_TEXT"
         };
 
@@ -210,11 +210,10 @@ public class MachineTassServiceImpl {
                     if (buildingOpt.isPresent()) {
                         buildingName = buildingOpt.get().getBUILDING_NAME();
                     } else {
-                        buildingName = "Unknown";  // Jika BUILDING_ID tidak ditemukan
+                        buildingName = "Unknown";  
                     }
                 }
 
-                // Ganti BUILDING_ID dengan BUILDING_NAME
                 Cell buildingNameCell = dataRow.createCell(2);
                 buildingNameCell.setCellValue(buildingName);
                 buildingNameCell.setCellStyle(borderStyle);
@@ -228,7 +227,7 @@ public class MachineTassServiceImpl {
                 machineNumberCell.setCellStyle(borderStyle);
 
                 Cell typeCell = dataRow.createCell(5);
-                typeCell.setCellValue(m.getTYPE() != null ? m.getTYPE() : "");
+                typeCell.setCellValue(m.getMACHINE_TASS_TYPE_ID() != null ? m.getMACHINE_TASS_TYPE_ID() : "");
                 typeCell.setCellStyle(borderStyle);
 
                 Cell workCenterTextCell = dataRow.createCell(6);

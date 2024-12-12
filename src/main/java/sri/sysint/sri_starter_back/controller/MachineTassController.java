@@ -337,13 +337,12 @@ public class MachineTassController {
 
 		                        MachineTass machineTass = new MachineTass();
 		                        Cell idMachineTassCell = row.getCell(1);
-		                        Cell buildingNameCell = row.getCell(2);  // Change to Building Name column
+		                        Cell buildingNameCell = row.getCell(2);  
 		                        Cell floorCell = row.getCell(3);
 		                        Cell machineNumberCell = row.getCell(4);
 		                        Cell typeCell = row.getCell(5);
 		                        Cell workCenterTextCell = row.getCell(6);
 
-		                        // Check if required fields are present and valid
 		                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
 		                                && floorCell != null && floorCell.getCellType() == CellType.NUMERIC
 		                                && machineNumberCell != null && machineNumberCell.getCellType() == CellType.NUMERIC
@@ -362,7 +361,7 @@ public class MachineTassController {
 
 		                            machineTass.setFLOOR(BigDecimal.valueOf(floorCell.getNumericCellValue()));
 		                            machineTass.setMACHINE_NUMBER(BigDecimal.valueOf(machineNumberCell.getNumericCellValue()));
-		                            machineTass.setTYPE(typeCell.getStringCellValue());
+		                            machineTass.setMACHINE_TASS_TYPE_ID(typeCell.getStringCellValue());
 		                            machineTass.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
 		                            machineTass.setSTATUS(BigDecimal.valueOf(1));
 		                            machineTass.setCREATION_DATE(new Date());
@@ -388,7 +387,6 @@ public class MachineTassController {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
 		}
-
 		
 		   @RequestMapping("/exportMachineTassExcel")
 		    public ResponseEntity<InputStreamResource> exportMachineTassExcel() throws IOException {
