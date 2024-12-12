@@ -316,10 +316,10 @@ public class MarketingOrderController {
 	    }
 	    
 	    @PostMapping("/arRejectDefectMo")
-	    public Response arDefectReject(final HttpServletRequest req, @RequestBody EditMarketingOrderMarketing marketingOrderData) throws ResourceNotFoundException{
+	    public Response arDefectReject(final HttpServletRequest req, @RequestBody GetAllTypeMarketingOrder marketingOrderData) throws ResourceNotFoundException{
 	    	validateToken(req);
 
-	    	int statusSaved = marketingOrderServiceImpl.ArRejectDefectMO(marketingOrderData);
+	    	int statusSaved = marketingOrderServiceImpl.saveArDefectReject(marketingOrderData);
 	    	
 	    	if(statusSaved == 1) {
 	    		response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), null);
