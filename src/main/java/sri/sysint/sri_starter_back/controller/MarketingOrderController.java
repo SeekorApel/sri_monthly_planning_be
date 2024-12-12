@@ -46,6 +46,7 @@ import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.model.WorkDay;
 import sri.sysint.sri_starter_back.model.transaksi.EditMarketingOrderMarketing;
 import sri.sysint.sri_starter_back.model.transaksi.GetAllTypeMarketingOrder;
+import sri.sysint.sri_starter_back.model.transaksi.SaveFinalMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
@@ -84,6 +85,20 @@ public class MarketingOrderController {
     
     
     //------------------------------------------MARKETING ORDER-------------------------------------
+    
+    @PostMapping("/arRejectDefectMo")
+    public Response arDefectReject(final HttpServletRequest req, @RequestBody SaveFinalMarketingOrder mo) throws ResourceNotFoundException{
+    	validateToken(req);
+
+    	int statusSaved = marketingOrderServiceImpl.saveArDefectReject(mo);
+    	
+    	if(statusSaved == 1) {
+    		response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), null);
+    	}else {
+    		response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), req.getRequestURI(), null);
+    	}
+    	return response;
+    }
     
     @PostMapping("/getAllTypeMarketingOrder")
     public Response getAllTypeMarketingOrder(final HttpServletRequest req, @RequestBody Map<String, Object> object) throws ResourceNotFoundException{
@@ -315,19 +330,6 @@ public class MarketingOrderController {
 	    	return response;
 	    }
 	    
-	    @PostMapping("/arRejectDefectMo")
-	    public Response arDefectReject(final HttpServletRequest req, @RequestBody GetAllTypeMarketingOrder marketingOrderData) throws ResourceNotFoundException{
-	    	validateToken(req);
-
-	    	int statusSaved = marketingOrderServiceImpl.saveArDefectReject(marketingOrderData);
-	    	
-	    	if(statusSaved == 1) {
-	    		response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), null);
-	    	}else {
-	    		response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), req.getRequestURI(), null);
-	    	}
-	    	return response;
-	    }
 	    
 		@GetMapping("/getAllMoById/{moId}")
 		public Response getAllMoById(final HttpServletRequest req, @PathVariable String moId) throws ResourceNotFoundException {

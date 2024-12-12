@@ -138,6 +138,9 @@ public class DetailMarketingOrder {
 	    this.lockStatusM0 = detailMarketingOrder.getLockStatusM0();
 	    this.lockStatusM1 = detailMarketingOrder.getLockStatusM1();
 	    this.lockStatusM2 = detailMarketingOrder.getLockStatusM2();
+	    this.ar = detailMarketingOrder.getAr();
+	    this.defect = detailMarketingOrder.getDefect();
+	    this.reject = detailMarketingOrder.getReject();
 	    this.status = detailMarketingOrder.getStatus();
 	    this.creationDate = detailMarketingOrder.getCreationDate();
 	    this.createdBy = detailMarketingOrder.getCreatedBy();
@@ -412,6 +415,16 @@ public class DetailMarketingOrder {
 	public void setLastUpdatedBy(String lastUpdatedBy) {
 		this.lastUpdatedBy = lastUpdatedBy;
 	}
+
+	@Override
+	public String toString() {
+		return "DetailMarketingOrder [moId=" + moId + ", partNumber=" + partNumber + ", description=" + description
+				+ ", moMonth0=" + moMonth0 + ", ppd=" + ppd + ", cav=" + cav + ", lockStatusM0=" + lockStatusM0
+				+ ", lockStatusM1=" + lockStatusM1 + ", lockStatusM2=" + lockStatusM2 + ", ar=" + ar + ", defect="
+				+ defect + ", reject=" + reject + "]";
+	}
+	
+	
 
 	
 }
