@@ -216,7 +216,7 @@ public class SettingServiceImpl {
                 settingKeyCell.setCellStyle(borderStyle);
                 
                 Cell settingValueCell = dataRow.createCell(3);
-                settingValueCell.setCellValue(s.getSETTING_VALUE() != null ? Double.parseDouble(String.valueOf(s.getSETTING_VALUE())) : 0.0);
+                settingValueCell.setCellValue(s.getSETTING_VALUE() != null ? s.getSETTING_VALUE() : null);
                 settingValueCell.setCellStyle(borderStyle);
                 
                 Cell descriptionCell = dataRow.createCell(4);
