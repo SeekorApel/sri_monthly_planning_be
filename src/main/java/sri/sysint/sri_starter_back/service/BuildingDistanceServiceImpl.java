@@ -8,18 +8,24 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -152,10 +158,10 @@ public class BuildingDistanceServiceImpl {
     
     private ByteArrayInputStream dataToExcel(List<BuildingDistance> buildingDistances) throws IOException {
         String[] header = {
-            "NOMOR",              
+            "NOMOR",
             "ID_B_DISTANCE",
-            "BUILDING_NAME_1",  
-            "BUILDING_NAME_2",  
+            "BUILDING_NAME_1",
+            "BUILDING_NAME_2",
             "DISTANCE"
         };
 
@@ -163,8 +169,12 @@ public class BuildingDistanceServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
-            Sheet sheet = workbook.createSheet("BUILDING_DISTANCE DATA");
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
 
+            Sheet sheet = workbook.createSheet("BUILDING_DISTANCE DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
@@ -177,19 +187,19 @@ public class BuildingDistanceServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Set column widths
             for (int i = 0; i < header.length; i++) {
-                sheet.setColumnWidth(i, 20 * 256); // 20 characters wide
+                sheet.setColumnWidth(i, 20 * 256);
             }
 
-            // Write header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -197,56 +207,79 @@ public class BuildingDistanceServiceImpl {
                 cell.setCellStyle(headerStyle);
             }
 
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("BuildingNames");
+            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
             int rowIndex = 1;
-            int nomor = 1;  
+            int nomor = 1;
             for (BuildingDistance bd : buildingDistances) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
-                // Write Nomor
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(nomor++);
                 nomorCell.setCellStyle(borderStyle);
 
-                // Write ID_B_DISTANCE
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(bd.getID_B_DISTANCE().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
+                Cell buildingName1Cell = dataRow.createCell(2);
+                buildingName1Cell.setCellStyle(borderStyle);
+
                 String buildingName1 = "";
                 if (bd.getBUILDING_ID_1() != null) {
-                    Optional<Building> building1Opt = buildingRepo.findById(bd.getBUILDING_ID_1());
-                    if (building1Opt.isPresent()) {
-                        buildingName1 = building1Opt.get().getBUILDING_NAME();
-                    }
+                    Optional<Building> building1Opt = activeBuildings.stream()
+                        .filter(b -> b.getBUILDING_ID().equals(bd.getBUILDING_ID_1()))
+                        .findFirst();
+                    buildingName1 = building1Opt.map(Building::getBUILDING_NAME).orElse("");
                 }
-
-                Cell buildingName1Cell = dataRow.createCell(2);
                 buildingName1Cell.setCellValue(buildingName1);
-                buildingName1Cell.setCellStyle(borderStyle);
+
+                Cell buildingName2Cell = dataRow.createCell(3);
+                buildingName2Cell.setCellStyle(borderStyle);
 
                 String buildingName2 = "";
                 if (bd.getBUILDING_ID_2() != null) {
-                    Optional<Building> building2Opt = buildingRepo.findById(bd.getBUILDING_ID_2());
-                    if (building2Opt.isPresent()) {
-                        buildingName2 = building2Opt.get().getBUILDING_NAME();
-                    }
+                    Optional<Building> building2Opt = activeBuildings.stream()
+                        .filter(b -> b.getBUILDING_ID().equals(bd.getBUILDING_ID_2()))
+                        .findFirst();
+                    buildingName2 = building2Opt.map(Building::getBUILDING_NAME).orElse("");
                 }
-
-                Cell buildingName2Cell = dataRow.createCell(3);
                 buildingName2Cell.setCellValue(buildingName2);
-                buildingName2Cell.setCellStyle(borderStyle);
 
                 Cell distanceCell = dataRow.createCell(4);
                 distanceCell.setCellValue(bd.getDISTANCE() != null ? bd.getDISTANCE().doubleValue() : null);
                 distanceCell.setCellStyle(borderStyle);
             }
 
-            // Write the workbook to the output stream
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList addressList1 = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation1 = validationHelper.createValidation(constraint, addressList1);
+            validation1.setSuppressDropDownArrow(true);
+            validation1.setShowErrorBox(true);
+            sheet.addValidationData(validation1);
+
+            CellRangeAddressList addressList2 = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validation2 = validationHelper.createValidation(constraint, addressList2);
+            validation2.setSuppressDropDownArrow(true);
+            validation2.setShowErrorBox(true);
+            sheet.addValidationData(validation2);
+
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("Failed to export BuildingDistance data");
             throw e;
         } finally {
             workbook.close();
@@ -254,5 +287,109 @@ public class BuildingDistanceServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutBuildingDistancesExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
+
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "ID_B_DISTANCE",
+            "BUILDING_NAME_1",
+            "BUILDING_NAME_2",
+            "DISTANCE"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+        	
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("BUILDING_DISTANCE TEMPLATE");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256); 
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+            
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("BuildingNames");
+            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
+
+            CellRangeAddressList addressList1 = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation1 = validationHelper.createValidation(constraint, addressList1);
+            validation1.setSuppressDropDownArrow(true);
+            validation1.setShowErrorBox(true);
+            sheet.addValidationData(validation1);
+
+            CellRangeAddressList addressList2 = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validation2 = validationHelper.createValidation(constraint, addressList2);
+            validation2.setSuppressDropDownArrow(true);
+            validation2.setShowErrorBox(true);
+            sheet.addValidationData(validation2);
+
+            workbook.write(out);
+
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 
 }

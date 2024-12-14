@@ -305,19 +305,17 @@ public class PlantController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            plantServiceImpl.deleteAllPlant();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Plant> plants = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-	                        // Check if the row is empty (ignoring borders)
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -329,43 +327,55 @@ public class PlantController {
 	                        }
 
 	                        if (isEmptyRow) {
-	                            continue; // Skip the row if it's empty
+	                            continue;
+	                        }
+
+	                        Cell nameCell = row.getCell(2);
+
+	                        if (nameCell == null || nameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Plant Name)");
+	                            continue;
 	                        }
 
 	                        Plant plant = new Plant();
-	                        Cell nameCell = row.getCell(2);
+	                        plant.setPLANT_ID(plantServiceImpl.getNewId());
+	                        plant.setPLANT_NAME(nameCell.getStringCellValue());
+	                        plant.setSTATUS(BigDecimal.valueOf(1));
+	                        plant.setCREATION_DATE(new Date());
+	                        plant.setLAST_UPDATE_DATE(new Date());
 
-	                        if (nameCell != null) {
-	                            plant.setPLANT_ID(plantServiceImpl.getNewId());
-	                            plant.setPLANT_NAME(nameCell.getStringCellValue());
-	                            plant.setSTATUS(BigDecimal.valueOf(1));
-	                            plant.setCREATION_DATE(new Date());
-	                            plant.setLAST_UPDATE_DATE(new Date());
-	                        }
-
-	                        plantServiceImpl.savePlant(plant);
 	                        plants.add(plant);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), plants);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                plantServiceImpl.deleteAllPlant();
+	                for (Plant plant : plants) {
+	                    plantServiceImpl.savePlant(plant);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), plants);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 	
 	@RequestMapping("/exportPlantsExcel")
 	public ResponseEntity<InputStreamResource> exportPLantsExcel() throws IOException {
-	    String filename = "MASTER_PLANT.xlsx";
+	    String filename = "EXPORT_MASTER_PLANT.xlsx";
 	    
 	    ByteArrayInputStream data = plantServiceImpl.exportPlantsExcel();
 	    InputStreamResource file = new InputStreamResource(data);
@@ -376,7 +386,18 @@ public class PlantController {
 	        .body(file);
 	}
 	
-
+	@RequestMapping("/layoutPlantsExcel")
+	public ResponseEntity<InputStreamResource> layoutPLantsExcel() throws IOException {
+	    String filename = "LAYOUT_MASTER_PLANT.xlsx";
+	    
+	    ByteArrayInputStream data = plantServiceImpl.layoutPlantsExcel();
+	    InputStreamResource file = new InputStreamResource(data);
+	    
+	    return ResponseEntity.ok()
+	        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+	        .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+	        .body(file);
+	}
 //END - POST MAPPING
 //START - PUT MAPPING
 //END - PUT MAPPING
