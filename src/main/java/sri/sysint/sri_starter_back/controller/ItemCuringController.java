@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -285,6 +286,7 @@ public class ItemCuringController {
 
 		
 		@PostMapping("/saveItemCuringExcel")
+		@Transactional
 		public Response saveItemCuringExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 		    String header = req.getHeader("Authorization");
 
@@ -305,19 +307,17 @@ public class ItemCuringController {
 		                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 		            }
 
-		            itemCuringServiceImpl.deleteAllItemCuring();
-
 		            try (InputStream inputStream = file.getInputStream()) {
 		                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 		                XSSFSheet sheet = workbook.getSheetAt(0);
 
 		                List<ItemCuring> itemCurings = new ArrayList<>();
+		                List<String> errorMessages = new ArrayList<>();
 
 		                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 		                    Row row = sheet.getRow(i);
 
 		                    if (row != null) {
-
 		                        boolean isEmptyRow = true;
 
 		                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -329,7 +329,7 @@ public class ItemCuringController {
 		                        }
 
 		                        if (isEmptyRow) {
-		                            continue; 
+		                            continue;
 		                        }
 
 		                        ItemCuring itemCuring = new ItemCuring();
@@ -340,52 +340,94 @@ public class ItemCuringController {
 		                        Cell spareMould = row.getCell(5);
 		                        Cell mouldPlan = row.getCell(6);
 
-
-
-		                        if (itemCuringCell != null &&
-		                        		kapaPerMouldCell != null && kapaPerMouldCell.getCellType() == CellType.NUMERIC
-		                                && numberOfMouldCell != null && numberOfMouldCell.getCellType() == CellType.NUMERIC
-		                                && machineTypeCell != null && spareMould !=null && mouldPlan!= null) {
-
-		                            itemCuring.setITEM_CURING(itemCuringCell.getStringCellValue());
-		                            itemCuring.setKAPA_PER_MOULD(BigDecimal.valueOf(kapaPerMouldCell.getNumericCellValue()));
-		                            itemCuring.setNUMBER_OF_MOULD(BigDecimal.valueOf(numberOfMouldCell.getNumericCellValue()));
-		                            itemCuring.setMACHINE_TYPE(machineTypeCell.getStringCellValue());
-		                            itemCuring.setSPARE_MOULD(BigDecimal.valueOf(spareMould.getNumericCellValue()));
-		                            itemCuring.setMOULD_MONTHLY_PLAN(BigDecimal.valueOf(mouldPlan.getNumericCellValue()));
-
-		                            itemCuring.setSTATUS(BigDecimal.valueOf(1));
-		                            itemCuring.setCREATION_DATE(new Date());
-		                            itemCuring.setLAST_UPDATE_DATE(new Date());
-
-		                            itemCuringServiceImpl.saveItemCuring(itemCuring);
-		                            itemCurings.add(itemCuring);
-		                        } else {
+		                        if (itemCuringCell == null || itemCuringCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (Item Curing)");
 		                            continue;
 		                        }
+
+		                        if (kapaPerMouldCell == null || kapaPerMouldCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Tidak Valid pada Baris " + (i + 1) + " Kolom 3 (Kapa Per Mould)");
+		                            continue;
+		                        }
+
+		                        if (numberOfMouldCell == null || numberOfMouldCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Tidak Valid pada Baris " + (i + 1) + " Kolom 4 (Number of Mould)");
+		                            continue;
+		                        }
+
+		                        if (machineTypeCell == null || machineTypeCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Machine Type)");
+		                            continue;
+		                        }
+
+		                        if (spareMould == null || spareMould.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Tidak Valid pada Baris " + (i + 1) + " Kolom 6 (Spare Mould)");
+		                            continue;
+		                        }
+
+		                        if (mouldPlan == null || mouldPlan.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Tidak Valid pada Baris " + (i + 1) + " Kolom 7 (Mould Monthly Plan)");
+		                            continue;
+		                        }
+
+		                        itemCuring.setITEM_CURING(itemCuringCell.getStringCellValue());
+		                        itemCuring.setKAPA_PER_MOULD(BigDecimal.valueOf(kapaPerMouldCell.getNumericCellValue()));
+		                        itemCuring.setNUMBER_OF_MOULD(BigDecimal.valueOf(numberOfMouldCell.getNumericCellValue()));
+		                        itemCuring.setMACHINE_TYPE(machineTypeCell.getStringCellValue());
+		                        itemCuring.setSPARE_MOULD(BigDecimal.valueOf(spareMould.getNumericCellValue()));
+		                        itemCuring.setMOULD_MONTHLY_PLAN(BigDecimal.valueOf(mouldPlan.getNumericCellValue()));
+
+		                        itemCuring.setSTATUS(BigDecimal.valueOf(1));
+		                        itemCuring.setCREATION_DATE(new Date());
+		                        itemCuring.setLAST_UPDATE_DATE(new Date());
+
+		                        itemCurings.add(itemCuring);
 		                    }
 		                }
 
-		                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), itemCurings);
+		                if (!errorMessages.isEmpty()) {
+		                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+		                }
+
+		                itemCuringServiceImpl.deleteAllItemCuring();
+		                for (ItemCuring itemCuring : itemCurings) {
+		                    itemCuringServiceImpl.saveItemCuring(itemCuring);
+		                }
+
+		                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), itemCurings);
 
 		            } catch (IOException e) {
-		                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+		                throw new RuntimeException("Error processing file", e);
 		            }
 		        } else {
 		            throw new ResourceNotFoundException("User not found");
 		        }
+		    } catch (IllegalArgumentException e) {
+		        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 		    } catch (Exception e) {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
-
-		    return response;
 		}
+
 		
 	    @RequestMapping("/exportItemCuringExcel")
 	    public ResponseEntity<InputStreamResource> exportItemCuringExcel() throws IOException {
-	        String filename = "MASTER_ITEM_CURING.xlsx";
+	        String filename = "EXPORT_MASTER_ITEM_CURING.xlsx";
 
 	        ByteArrayInputStream data = itemCuringServiceImpl.exportItemCuringsExcel(); 
+	        InputStreamResource file = new InputStreamResource(data);
+
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename) 
+	                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+	                .body(file); 
+	    }
+	    
+	    @RequestMapping("/layoutItemCuringExcel")
+	    public ResponseEntity<InputStreamResource> layoutItemCuringExcel() throws IOException {
+	        String filename = "LAYOUT_MASTER_ITEM_CURING.xlsx";
+
+	        ByteArrayInputStream data = itemCuringServiceImpl.layoutItemCuringsExcel(); 
 	        InputStreamResource file = new InputStreamResource(data);
 
 	        return ResponseEntity.ok()

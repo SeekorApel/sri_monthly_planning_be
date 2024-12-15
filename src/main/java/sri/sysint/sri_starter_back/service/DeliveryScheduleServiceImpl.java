@@ -20,6 +20,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -187,14 +188,15 @@ public class DeliveryScheduleServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Create a cell style for date formatting
             CellStyle dateStyle = workbook.createCellStyle();
             dateStyle.cloneStyleFrom(borderStyle);
             DataFormat dateFormat = workbook.createDataFormat();
@@ -215,37 +217,32 @@ public class DeliveryScheduleServiceImpl {
             for (DeliverySchedule ds : deliverySchedules) {
                 Row dataRow = sheet.createRow(rowIndex);
 
-                // Nomor Cell
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(rowIndex);
                 nomorCell.setCellStyle(borderStyle);
 
-                // ID Cell
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(ds.getDS_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                // Effective Time Cell (Date formatted)
                 Cell effectiveTimeCell = dataRow.createCell(2);
                 if (ds.getEFFECTIVE_TIME() != null) {
                     effectiveTimeCell.setCellValue(ds.getEFFECTIVE_TIME());
-                    effectiveTimeCell.setCellStyle(dateStyle); // Apply date format
+                    effectiveTimeCell.setCellStyle(dateStyle); 
                 } else {
                     effectiveTimeCell.setCellValue("");
                     effectiveTimeCell.setCellStyle(borderStyle);
                 }
 
-                // Date Issued Cell (Date formatted)
                 Cell dateIssuedCell = dataRow.createCell(3);
                 if (ds.getDATE_ISSUED() != null) {
                     dateIssuedCell.setCellValue(ds.getDATE_ISSUED());
-                    dateIssuedCell.setCellStyle(dateStyle); // Apply date format
+                    dateIssuedCell.setCellStyle(dateStyle); 
                 } else {
                     dateIssuedCell.setCellValue("");
                     dateIssuedCell.setCellStyle(borderStyle);
                 }
 
-                // Category Cell
                 Cell categoryCell = dataRow.createCell(4);
                 categoryCell.setCellValue(ds.getCATEGORY() != null ? ds.getCATEGORY() : "");
                 categoryCell.setCellStyle(borderStyle);
@@ -253,6 +250,10 @@ public class DeliveryScheduleServiceImpl {
                 rowIndex++;
             }
 
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -265,6 +266,81 @@ public class DeliveryScheduleServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutDeliverySchedulesExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
+    
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {"NOMOR", "DELIVERYSCHEDULE_ID", "EFFECTIVE_TIME", "DATE_ISSUED", "CATEGORY"};
 
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            Sheet sheet = workbook.createSheet("DELIVERY SCHEDULE DATA");
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.cloneStyleFrom(borderStyle);
+            DataFormat dateFormat = workbook.createDataFormat();
+            dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            int rowIndex = 1;
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export DeliverySchedule data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
     
 }

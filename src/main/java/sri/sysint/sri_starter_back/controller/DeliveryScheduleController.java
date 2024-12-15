@@ -31,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -309,96 +310,167 @@ public class DeliveryScheduleController {
 	}
 	
 	@PostMapping("/saveDeliverySchedulesExcel")
+	@Transactional
 	public Response saveDeliverySchedulesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-	    if (file.isEmpty()) {
-	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+	    String header = req.getHeader("Authorization");
+
+	    if (header == null || !header.startsWith("Bearer ")) {
+	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
 	    }
-	    
-	    deliveryScheduleServiceImpl.deleteAllDeliverySchedules();
 
-	    try (InputStream inputStream = file.getInputStream()) {
-	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-	        XSSFSheet sheet = workbook.getSheetAt(0);
-	        
-	        List<DeliverySchedule> deliverySchedules = new ArrayList<>();
+	    String token = header.replace("Bearer ", "");
 
-	        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-	            Row row = sheet.getRow(i);
-	            if (row != null) {
-	                DeliverySchedule deliverySchedule = new DeliverySchedule();
+	    try {
+	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+	            .build()
+	            .verify(token)
+	            .getSubject();
 
-	                Cell effectiveTimeCell = row.getCell(2);
-	                Cell dateIssuedCell = row.getCell(3);
-	                Cell categoryCell = row.getCell(4);
+	        if (user != null) {
+	            if (file.isEmpty()) {
+	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+	            }
 
-	                if (effectiveTimeCell != null && dateIssuedCell != null && categoryCell != null) {
-	                    deliverySchedule.setDS_ID(deliveryScheduleServiceImpl.getNewId());
+	            try (InputStream inputStream = file.getInputStream()) {
+	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+	                XSSFSheet sheet = workbook.getSheetAt(0);
 
-	                    Date effectiveTime = getDateFromCell(effectiveTimeCell);
-	                    if (effectiveTime != null) {
-	                        deliverySchedule.setEFFECTIVE_TIME(effectiveTime);
-	                    } else {
-	                        continue;
+	                List<DeliverySchedule> deliverySchedules = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
+
+	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+	                    Row row = sheet.getRow(i);
+
+	                    if (row != null) {
+	                        boolean isEmptyRow = true;
+
+	                        for (int j = 0; j < row.getLastCellNum(); j++) {
+	                            Cell cell = row.getCell(j);
+	                            if (cell != null && cell.getCellType() != CellType.BLANK) {
+	                                isEmptyRow = false;
+	                                break;
+	                            }
+	                        }
+
+	                        if (isEmptyRow) {
+	                            continue;
+	                        }
+
+	                        DeliverySchedule deliverySchedule = new DeliverySchedule();
+
+	                        Cell effectiveTimeCell = row.getCell(2);
+	                        Cell dateIssuedCell = row.getCell(3);
+	                        Cell categoryCell = row.getCell(4);
+
+	                        if (effectiveTimeCell == null || effectiveTimeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Effective Time)");
+	                            continue;
+	                        }
+
+	                        if (dateIssuedCell == null || dateIssuedCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Date Issued)");
+	                            continue;
+	                        }
+
+	                        if (categoryCell == null || categoryCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Category)");
+	                            continue;
+	                        }
+
+	                        try {
+	                            Date effectiveTime = null;
+	                            if (effectiveTimeCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(effectiveTimeCell)) {
+	                                effectiveTime = effectiveTimeCell.getDateCellValue();
+	                            } else if (effectiveTimeCell.getCellType() == CellType.STRING) {
+	                                String dateStr = effectiveTimeCell.getStringCellValue();
+	                                if (dateStr != null && !dateStr.isEmpty()) {
+	                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	                                    sdf.setLenient(false);
+	                                    effectiveTime = sdf.parse(dateStr);
+	                                }
+	                            }
+
+	                            if (effectiveTime == null) {
+	                                throw new ParseException("Invalid date format", 0);
+	                            }
+
+	                            Date dateIssued = null;
+	                            if (dateIssuedCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateIssuedCell)) {
+	                                dateIssued = dateIssuedCell.getDateCellValue();
+	                            } else if (dateIssuedCell.getCellType() == CellType.STRING) {
+	                                String dateStr = dateIssuedCell.getStringCellValue();
+	                                if (dateStr != null && !dateStr.isEmpty()) {
+	                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	                                    sdf.setLenient(false);
+	                                    dateIssued = sdf.parse(dateStr);
+	                                }
+	                            }
+
+	                            if (dateIssued == null) {
+	                                throw new ParseException("Invalid date format", 0);
+	                            }
+
+	                            deliverySchedule.setDS_ID(deliveryScheduleServiceImpl.getNewId());
+	                            deliverySchedule.setEFFECTIVE_TIME(effectiveTime);
+	                            deliverySchedule.setDATE_ISSUED(dateIssued);
+	                            deliverySchedule.setCATEGORY(categoryCell.getStringCellValue());
+	                            deliverySchedule.setSTATUS(BigDecimal.valueOf(1));
+	                            deliverySchedule.setCREATION_DATE(new Date());
+	                            deliverySchedule.setLAST_UPDATE_DATE(new Date());
+
+	                            deliverySchedules.add(deliverySchedule);
+
+	                        } catch (ParseException e) {
+	                            errorMessages.add("Data Tidak Valid, Format Tanggal Salah pada Baris " + (i + 1));
+	                            continue;
+	                        }
 	                    }
-
-	                    Date dateIssued = getDateFromCell(dateIssuedCell);
-	                    if (dateIssued != null) {
-	                        deliverySchedule.setDATE_ISSUED(dateIssued);
-	                    } else {
-	                        continue;
-	                    }
-
-	                    deliverySchedule.setCATEGORY(categoryCell.getStringCellValue());
-
-	                    deliverySchedule.setSTATUS(BigDecimal.valueOf(1));
-	                    deliverySchedule.setCREATION_DATE(new Date());
-	                    deliverySchedule.setLAST_UPDATE_DATE(new Date());
 	                }
 
-	                deliveryScheduleServiceImpl.saveDeliverySchedule(deliverySchedule);
-	                deliverySchedules.add(deliverySchedule);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                deliveryScheduleServiceImpl.deleteAllDeliverySchedules();
+	                for (DeliverySchedule deliverySchedule : deliverySchedules) {
+	                    deliveryScheduleServiceImpl.saveDeliverySchedule(deliverySchedule);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), deliverySchedules);
+
+	            } catch (IOException e) {
+	                throw new RuntimeException("Error processing file", e);
 	            }
-	        }
-
-	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), deliverySchedules);
-
-	    } catch (IOException | ParseException e) {
-	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
-	    }
-
-	    return response;
-	}
-	
-	private Date getDateFromCell(Cell cell) throws ParseException {
-	    if (cell == null) {
-	        return null;
-	    }
-
-	    if (cell.getCellType() == CellType.NUMERIC) {
-	        if (DateUtil.isCellDateFormatted(cell)) {
-	            return cell.getDateCellValue();
 	        } else {
-	            return null;
+	            throw new ResourceNotFoundException("User not found");
 	        }
-	    } else if (cell.getCellType() == CellType.STRING) {
-	        String dateStr = cell.getStringCellValue();
-	        if (dateStr == null || dateStr.isEmpty()) {
-	            return null;
-	        }
-	        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-	        sdf.setLenient(false);
-	        return sdf.parse(dateStr);
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+	    } catch (Exception e) {
+	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return null;
 	}
+
 
 	
     @GetMapping("/exportDeliveryScheduleExcel")
     public ResponseEntity<InputStreamResource> exportDeliveryScheduleExcel() throws IOException {
-        String filename = "MASTER_DELIVERY_SCHEDULE.xlsx";
+        String filename = "EXPORT_MASTER_DELIVERY_SCHEDULE.xlsx";
 
         ByteArrayInputStream data = deliveryScheduleServiceImpl.exportDeliverySchedulesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
+    @GetMapping("/layoutDeliveryScheduleExcel")
+    public ResponseEntity<InputStreamResource> layoutDeliveryScheduleExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_DELIVERY_SCHEDULE.xlsx";
+
+        ByteArrayInputStream data = deliveryScheduleServiceImpl.layoutDeliverySchedulesExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()

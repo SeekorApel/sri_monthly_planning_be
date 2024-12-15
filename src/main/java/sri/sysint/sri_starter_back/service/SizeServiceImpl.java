@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -157,12 +158,14 @@ public class SizeServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
@@ -191,6 +194,9 @@ public class SizeServiceImpl {
                 descriptionCell.setCellStyle(borderStyle);
             }
 
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -203,5 +209,78 @@ public class SizeServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutSizesExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
+    
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "SIZE_ID",
+            "DESCRIPTION"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            Sheet sheet = workbook.createSheet("SIZE DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            int rowIndex = 1;
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export Size data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
     
 }
