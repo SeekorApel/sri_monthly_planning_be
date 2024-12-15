@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -285,6 +286,7 @@ public class MachineCuringTypeController {
 	}
 
 	@PostMapping("/saveMachineCuringTypeExcel")
+	@Transactional
 	public Response saveMachineCuringTypesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -305,13 +307,12 @@ public class MachineCuringTypeController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            machineCuringTypeServiceImpl.deleteAllMachineCuringType();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<MachineCuringType> machineCuringTypes = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -337,55 +338,97 @@ public class MachineCuringTypeController {
 	                        Cell settingValueCell = row.getCell(2); 
 	                        Cell descriptionCell = row.getCell(3);
 	                        Cell cavityCell = row.getCell(4);
+	                        
+	                        if (machineCuringTypeIdCell == null || machineCuringTypeIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (Machine Curing Type ID)");
+	                            continue;
+	                        }
 
-	                        if (settingValueCell != null && settingValueCell.getCellType() == CellType.STRING
-	                                && descriptionCell != null 
-	                                && cavityCell != null && cavityCell.getCellType() == CellType.NUMERIC) {
+	                        if (settingValueCell == null || settingValueCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Setting Value)");
+	                            continue;
+	                        }
 
-	                            String settingValue = settingValueCell.getStringCellValue();
-	                            Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
-	                            if (settingOptional.isPresent()) {
-	                                machineCuringType.setSETTING_ID(settingOptional.get().getSETTING_ID());
-	                            } else {
-	                                continue; 
-	                            }
+	                        if (descriptionCell == null || descriptionCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Description)");
+	                            continue;
+	                        }
 
-	                            machineCuringType.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
-	                            machineCuringType.setDESCRIPTION(descriptionCell.getStringCellValue());
-	                            machineCuringType.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
-	                            machineCuringType.setSTATUS(BigDecimal.valueOf(1));
-	                            machineCuringType.setCREATION_DATE(new Date());
-	                            machineCuringType.setLAST_UPDATE_DATE(new Date());
+	                        if (cavityCell == null || cavityCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Invalid pada Baris " + (i + 1) + " Kolom 5 (Cavity)");
+	                            continue;
+	                        }
 
-	                            machineCuringTypeServiceImpl.saveMachineCuringType(machineCuringType);
-	                            machineCuringTypes.add(machineCuringType);
+	                        String settingValue = null;
+	                        if (settingValueCell.getCellType() == CellType.NUMERIC) {
+	                            settingValue = String.valueOf((int) settingValueCell.getNumericCellValue());
+	                        } else if (settingValueCell.getCellType() == CellType.STRING) {
+	                            settingValue = settingValueCell.getStringCellValue();
 	                        } else {
 	                            continue;
 	                        }
+
+	                        Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
+	                        if (settingOptional.isPresent()) {
+	                            machineCuringType.setSETTING_ID(settingOptional.get().getSETTING_ID());
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Data Setting pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            continue;
+	                        }
+
+	                        machineCuringType.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
+	                        machineCuringType.setDESCRIPTION(descriptionCell.getStringCellValue());
+	                        machineCuringType.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
+	                        machineCuringType.setSTATUS(BigDecimal.valueOf(1));
+	                        machineCuringType.setCREATION_DATE(new Date());
+	                        machineCuringType.setLAST_UPDATE_DATE(new Date());
+
+	                        machineCuringTypes.add(machineCuringType);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineCuringTypes);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                machineCuringTypeServiceImpl.deleteAllMachineCuringType();
+	                for (MachineCuringType machineCuringType : machineCuringTypes) {
+	                    machineCuringTypeServiceImpl.saveMachineCuringType(machineCuringType);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineCuringTypes);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
-
 
     @GetMapping("/exportMachineCuringTypeexcel")
     public ResponseEntity<InputStreamResource> exportMachineCuringTypesExcel() throws IOException {
-        String filename = "MASTER_MACHINE_CURING_TYPE.xlsx";
+        String filename = "EXPORT_MASTER_MACHINE_CURING_TYPE.xlsx";
 
         ByteArrayInputStream data = machineCuringTypeServiceImpl.exportMachineCuringTypesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
+    @GetMapping("/layoutMachineCuringTypeexcel")
+    public ResponseEntity<InputStreamResource> layoutMachineCuringTypeexcel() throws IOException {
+        String filename = "LAYOUT_MASTER_MACHINE_CURING_TYPE.xlsx";
+
+        ByteArrayInputStream data = machineCuringTypeServiceImpl.layoutMachineCuringTypesExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()

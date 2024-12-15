@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -286,6 +287,7 @@ public class PatternController {
 
 	
 	@PostMapping("/savePatternsExcel")
+	@Transactional
 	public Response savePatternsExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -306,19 +308,17 @@ public class PatternController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            patternServiceImpl.deleteAllPattern();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Pattern> patterns = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -334,44 +334,67 @@ public class PatternController {
 	                        }
 
 	                        Pattern pattern = new Pattern();
-
 	                        Cell patternNameCell = row.getCell(2);
 
-	                        if (patternNameCell != null && patternNameCell.getCellType() == CellType.STRING) {
+	                        if (patternNameCell == null || patternNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Pattern Name)");
+	                            continue;
+	                        }
+
+	                        if (patternNameCell.getCellType() == CellType.STRING) {
 	                            pattern.setPATTERN_ID(patternServiceImpl.getNewId());
 	                            pattern.setPATTERN_NAME(patternNameCell.getStringCellValue());
 	                            pattern.setSTATUS(BigDecimal.valueOf(1));
 	                            pattern.setCREATION_DATE(new Date());
 	                            pattern.setLAST_UPDATE_DATE(new Date());
 
-	                            patternServiceImpl.savePattern(pattern);
 	                            patterns.add(pattern);
-	                        } else {
-	                            continue;
 	                        }
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), patterns);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                patternServiceImpl.deleteAllPattern();
+	                for (Pattern pattern : patterns) {
+	                    patternServiceImpl.savePattern(pattern);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), patterns);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
 
     @RequestMapping("/exportPatternExcel")
     public ResponseEntity<InputStreamResource> exportPatternExcel() throws IOException {
-        String filename = "MASTER_PATTERN.xlsx"; 
+        String filename = "EXPORT_MASTER_PATTERN.xlsx"; 
 
         ByteArrayInputStream data = patternServiceImpl.exportPatternsExcel();
+        InputStreamResource file = new InputStreamResource(data); 
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file); 
+    }
+    
+    @RequestMapping("/layoutPatternExcel")
+    public ResponseEntity<InputStreamResource> layoutPatternExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_PATTERN.xlsx"; 
+
+        ByteArrayInputStream data = patternServiceImpl.layoutPatternsExcel();
         InputStreamResource file = new InputStreamResource(data); 
 
         return ResponseEntity.ok()
