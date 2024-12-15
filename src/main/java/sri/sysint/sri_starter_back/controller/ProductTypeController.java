@@ -27,6 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -281,8 +282,9 @@ public class ProductTypeController {
 	}
 	
 	@PostMapping("/saveProductTypeExcel")
+	@Transactional
 	public Response saveProductTypeExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-		String header = req.getHeader("Authorization");
+	    String header = req.getHeader("Authorization");
 
 	    if (header == null || !header.startsWith("Bearer ")) {
 	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
@@ -297,22 +299,21 @@ public class ProductTypeController {
 	            .getSubject();
 
 	        if (user != null) {
-	        	if (file.isEmpty()) {
-	    	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
-	    	    }
-	    	    
-	    	    producTypeServiceImpl.deleteAllProductType();
+	            if (file.isEmpty()) {
+	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+	            }
 
-	    	    try (InputStream inputStream = file.getInputStream()) {
-	    	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-	    	        XSSFSheet sheet = workbook.getSheetAt(0);
-	    	        
-	    	        List<ProductType> productTypes = new ArrayList<>();
-	    	        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+	            try (InputStream inputStream = file.getInputStream()) {
+	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+	                XSSFSheet sheet = workbook.getSheetAt(0);
+
+	                List<ProductType> productTypes = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
+
+	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-	                        // Check if the row is empty (ignoring borders)
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -324,47 +325,69 @@ public class ProductTypeController {
 	                        }
 
 	                        if (isEmptyRow) {
-	                            continue; // Skip the row if it's empty
+	                            continue;
 	                        }
 
-	    	                ProductType productType = new ProductType();
-	                        Cell nameCell = row.getCell(1);
+	                        ProductType productType = new ProductType();
+	                        Cell productMerkCell = row.getCell(2);
+	                        Cell productTypeCell = row.getCell(3);
+	                        Cell categoryCell = row.getCell(4);
 
-	                        if (nameCell != null) {
-	                        	productType.setPRODUCT_TYPE_ID(producTypeServiceImpl.getNewId());
-	    	                	productType.setPRODUCT_MERK(row.getCell(2).getStringCellValue());
-	    	                	productType.setPRODUCT_TYPE(row.getCell(3).getStringCellValue());
-	    	                	productType.setCATEGORY(row.getCell(4).getStringCellValue());
-	    	                	productType.setSTATUS(BigDecimal.valueOf(1));
-	    	                	productType.setCREATION_DATE(new Date());
-	    	                	productType.setLAST_UPDATE_DATE(new Date());
+	                        if (productMerkCell == null || productMerkCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Product Merk)");
+	                            continue;
 	                        }
 
-	                        producTypeServiceImpl.saveProductType(productType);
-	    	                productTypes.add(productType);
+	                        if (productTypeCell == null || productTypeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Product Type)");
+	                            continue;
+	                        }
+
+	                        if (categoryCell == null || categoryCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Category)");
+	                            continue;
+	                        }
+
+	                        productType.setPRODUCT_TYPE_ID(producTypeServiceImpl.getNewId());
+	                        productType.setPRODUCT_MERK(productMerkCell.getStringCellValue());
+	                        productType.setPRODUCT_TYPE(productTypeCell.getStringCellValue());
+	                        productType.setCATEGORY(categoryCell.getStringCellValue());
+	                        productType.setSTATUS(BigDecimal.valueOf(1));
+	                        productType.setCREATION_DATE(new Date());
+	                        productType.setLAST_UPDATE_DATE(new Date());
+
+	                        productTypes.add(productType);
 	                    }
 	                }
-	    	        productTypes.sort(Comparator.comparing(ProductType::getPRODUCT_TYPE_ID));
 
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
 
-	    	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), productTypes);
+	                producTypeServiceImpl.deleteAllProductType();
+	                for (ProductType productType : productTypes) {
+	                    producTypeServiceImpl.saveProductType(productType);
+	                }
 
-	    	    } catch (IOException e) {
-	    	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
-	    	    }
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), productTypes);
+
+	            } catch (IOException e) {
+	                throw new RuntimeException("Error processing file", e);
+	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 	
     @RequestMapping("/exportProductTypesExcel")
     public ResponseEntity<InputStreamResource> exportProductTypesExcel() throws IOException {
-        String filename = "MASTER_PRODUCT_TYPE.xlsx";
+        String filename = "EXPORT_MASTER_PRODUCT_TYPE.xlsx";
 
         ByteArrayInputStream data = producTypeServiceImpl.exportProductTypesExcel();
         InputStreamResource file = new InputStreamResource(data);
@@ -374,5 +397,16 @@ public class ProductTypeController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
-	
+    @RequestMapping("/layoutProductTypesExcel")
+    public ResponseEntity<InputStreamResource> layoutProductTypesExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_PRODUCT_TYPE.xlsx";
+
+        ByteArrayInputStream data = producTypeServiceImpl.layoutProductTypesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
 }

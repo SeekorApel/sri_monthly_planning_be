@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,8 +43,10 @@ import com.auth0.jwt.algorithms.Algorithm;
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineTass;
+import sri.sysint.sri_starter_back.model.MachineTassType;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.repository.BuildingRepo;
+import sri.sysint.sri_starter_back.repository.MachineTassTypeRepo;
 import sri.sysint.sri_starter_back.service.MachineTassServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -54,6 +57,8 @@ public class MachineTassController {
 
 	@Autowired
 	private MachineTassServiceImpl machineTassServiceImpl;
+	@Autowired
+	private MachineTassTypeRepo machineTassTypeRepo;
     @Autowired
     private BuildingRepo buildingRepo;
 	@PersistenceContext	
@@ -288,6 +293,7 @@ public class MachineTassController {
 
 		
 		@PostMapping("/saveMachineTassExcel")
+		@Transactional
 		public Response saveMachineTassExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 		    String header = req.getHeader("Authorization");
 
@@ -308,13 +314,12 @@ public class MachineTassController {
 		                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 		            }
 
-		            machineTassServiceImpl.deleteAllMachineTass();
-
 		            try (InputStream inputStream = file.getInputStream()) {
 		                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 		                XSSFSheet sheet = workbook.getSheetAt(0);
 
 		                List<MachineTass> machineTasses = new ArrayList<>();
+		                List<String> errorMessages = new ArrayList<>();
 
 		                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 		                    Row row = sheet.getRow(i);
@@ -322,7 +327,6 @@ public class MachineTassController {
 		                    if (row != null) {
 		                        boolean isEmptyRow = true;
 
-		                        // Check if the row is not empty
 		                        for (int j = 0; j < row.getLastCellNum(); j++) {
 		                            Cell cell = row.getCell(j);
 		                            if (cell != null && cell.getCellType() != CellType.BLANK) {
@@ -337,62 +341,115 @@ public class MachineTassController {
 
 		                        MachineTass machineTass = new MachineTass();
 		                        Cell idMachineTassCell = row.getCell(1);
-		                        Cell buildingNameCell = row.getCell(2);  
+		                        Cell buildingNameCell = row.getCell(2);
 		                        Cell floorCell = row.getCell(3);
 		                        Cell machineNumberCell = row.getCell(4);
 		                        Cell typeCell = row.getCell(5);
 		                        Cell workCenterTextCell = row.getCell(6);
 
-		                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
-		                                && floorCell != null && floorCell.getCellType() == CellType.NUMERIC
-		                                && machineNumberCell != null && machineNumberCell.getCellType() == CellType.NUMERIC
-		                                && typeCell != null
-		                                && workCenterTextCell != null) {
-
-		                            machineTass.setID_MACHINE_TASS(idMachineTassCell.getStringCellValue());
-
-		                            String buildingName = buildingNameCell.getStringCellValue();
-		                            Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
-		                            if (buildingOpt.isPresent()) {
-		                                machineTass.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
-		                            } else {
-		                                machineTass.setBUILDING_ID(BigDecimal.ZERO);
-		                            }
-
-		                            machineTass.setFLOOR(BigDecimal.valueOf(floorCell.getNumericCellValue()));
-		                            machineTass.setMACHINE_NUMBER(BigDecimal.valueOf(machineNumberCell.getNumericCellValue()));
-		                            machineTass.setMACHINE_TASS_TYPE_ID(typeCell.getStringCellValue());
-		                            machineTass.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
-		                            machineTass.setSTATUS(BigDecimal.valueOf(1));
-		                            machineTass.setCREATION_DATE(new Date());
-		                            machineTass.setLAST_UPDATE_DATE(new Date());
-
-		                            machineTassServiceImpl.saveMachineTass(machineTass);
-		                            machineTasses.add(machineTass);
-		                        } else {
+		                        if (idMachineTassCell == null || idMachineTassCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (ID Machine Tass)");
 		                            continue;
 		                        }
+
+		                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name)");
+		                            continue;
+		                        }
+
+		                        if (floorCell == null || floorCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Floor)");
+		                            continue;
+		                        }
+
+		                        if (machineNumberCell == null || machineNumberCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Machine Number)");
+		                            continue;
+		                        }
+
+		                        if (typeCell == null || typeCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Type)");
+		                            continue;
+		                        }
+
+		                        if (workCenterTextCell == null || workCenterTextCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 7 (Work Center Text)");
+		                            continue;
+		                        }
+
+		                        machineTass.setID_MACHINE_TASS(idMachineTassCell.getStringCellValue());
+
+		                        String buildingName = buildingNameCell.getStringCellValue();
+		                        Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
+
+		                        Optional<MachineTassType> machineTassTypeOpt = machineTassTypeRepo.findById(typeCell.getStringCellValue());
+		                        
+		                        if (buildingOpt.isPresent() ) {
+		                            machineTass.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
+		                        } else {
+		                            errorMessages.add("Data Tidak Valid, Data Building pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                        }
+		                        
+		                        if (machineTassTypeOpt.isPresent() ) {
+			                        machineTass.setMACHINE_TASS_TYPE_ID(typeCell.getStringCellValue());
+		                        } else {
+		                            errorMessages.add("Data Tidak Valid, Data Machine Tass Type pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                        }
+		                        
+		                        machineTass.setFLOOR(BigDecimal.valueOf(floorCell.getNumericCellValue()));
+		                        machineTass.setMACHINE_NUMBER(BigDecimal.valueOf(machineNumberCell.getNumericCellValue()));
+		                        machineTass.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
+		                        machineTass.setSTATUS(BigDecimal.valueOf(1));
+		                        machineTass.setCREATION_DATE(new Date());
+		                        machineTass.setLAST_UPDATE_DATE(new Date());
+		                        
+		                        machineTasses.add(machineTass);
 		                    }
+		                }
+
+		                if (!errorMessages.isEmpty()) {
+		                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+		                }
+
+		                machineTassServiceImpl.deleteAllMachineTass();
+		                for (MachineTass machineTass : machineTasses) {
+		                    machineTassServiceImpl.saveMachineTass(machineTass);
 		                }
 
 		                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineTasses);
 
 		            } catch (IOException e) {
-		                return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+		                throw new RuntimeException("Error processing file", e);
 		            }
 		        } else {
 		            throw new ResourceNotFoundException("User not found");
 		        }
+		    } catch (IllegalArgumentException e) {
+		        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 		    } catch (Exception e) {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
 		}
+
 		
 		   @RequestMapping("/exportMachineTassExcel")
 		    public ResponseEntity<InputStreamResource> exportMachineTassExcel() throws IOException {
-		        String filename = "MASTER_MACHINE_TASS.xlsx";
+		        String filename = "EXPORT_MASTER_MACHINE_TASS.xlsx";
 
 		        ByteArrayInputStream data = machineTassServiceImpl.exportMachineTassExcel(); 
+		        InputStreamResource file = new InputStreamResource(data); 
+
+		        return ResponseEntity.ok()
+		                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename) 
+		                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) 
+		                .body(file); 
+		    }
+		   
+		   @RequestMapping("/layoutMachineTassExcel")
+		    public ResponseEntity<InputStreamResource> layoutMachineTassExcel() throws IOException {
+		        String filename = "LAYOUT_MASTER_MACHINE_TASS.xlsx";
+
+		        ByteArrayInputStream data = machineTassServiceImpl.layoutMachineTassExcel(); 
 		        InputStreamResource file = new InputStreamResource(data); 
 
 		        return ResponseEntity.ok()
