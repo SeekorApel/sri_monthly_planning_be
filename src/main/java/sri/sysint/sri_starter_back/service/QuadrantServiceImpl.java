@@ -8,18 +8,25 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -155,7 +162,7 @@ public class QuadrantServiceImpl {
         String[] header = {
             "NOMOR",
             "QUADRANT_ID",
-            "BUILDING_NAME",  
+            "BUILDING_NAME",
             "QUADRANT_NAME"
         };
 
@@ -163,6 +170,11 @@ public class QuadrantServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
+
             Sheet sheet = workbook.createSheet("QUADRANT DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -176,19 +188,19 @@ public class QuadrantServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Set column width
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
             }
 
-            // Create header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -196,10 +208,24 @@ public class QuadrantServiceImpl {
                 cell.setCellStyle(headerStyle);
             }
 
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("BuildingNames");
+            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
             int rowIndex = 1;
             int nomor = 1;
             for (Quadrant q : quadrants) {
                 Row dataRow = sheet.createRow(rowIndex++);
+
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(nomor++);
                 nomorCell.setCellStyle(borderStyle);
@@ -208,7 +234,6 @@ public class QuadrantServiceImpl {
                 idCell.setCellValue(q.getQUADRANT_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                // Fetch building name using BUILDING_ID
                 String buildingName = null;
                 if (q.getBUILDING_ID() != null) {
                     Building building = buildingRepo.findById(q.getBUILDING_ID()).orElse(null);
@@ -217,7 +242,6 @@ public class QuadrantServiceImpl {
                     }
                 }
 
-                // Replace BUILDING_ID with BUILDING_NAME
                 Cell buildingNameCell = dataRow.createCell(2);
                 buildingNameCell.setCellValue(buildingName != null ? buildingName : "Unknown");
                 buildingNameCell.setCellStyle(borderStyle);
@@ -226,6 +250,14 @@ public class QuadrantServiceImpl {
                 nameCell.setCellValue(q.getQUADRANT_NAME());
                 nameCell.setCellStyle(borderStyle);
             }
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
@@ -239,5 +271,103 @@ public class QuadrantServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutQuadrantsExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel( );
+        return byteArrayInputStream;
+    }
+    
+    public ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "QUADRANT_ID",
+            "BUILDING_NAME",
+            "QUADRANT_NAME"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("QUADRANT DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("BuildingNames");
+            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            int rowIndex = 1;
+            int nomor = 1;
+            
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export Quadrant data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 
 }

@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -289,6 +290,7 @@ public class QuadrantDistanceController {
 
 	
 	@PostMapping("/saveQuadrantDistancesExcel")
+	@Transactional
 	public Response saveQuadrantDistancesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -309,13 +311,12 @@ public class QuadrantDistanceController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            quadrantDistanceServiceImpl.deleteAllQuadrantDistance();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<QuadrantDistance> quadrantDistances = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -342,64 +343,94 @@ public class QuadrantDistanceController {
 	                        Cell quadrantName2Cell = row.getCell(3);
 	                        Cell distanceCell = row.getCell(4);
 
-	                        if (quadrantName1Cell != null && quadrantName1Cell.getCellType() == CellType.STRING
-	                                && quadrantName2Cell != null && quadrantName2Cell.getCellType() == CellType.STRING
-	                                && distanceCell != null && distanceCell.getCellType() == CellType.NUMERIC) {
-
-	                            String quadrantName1 = quadrantName1Cell.getStringCellValue();
-	                            Optional<Quadrant> quadrant1Opt = quadrantRepo.findByName(quadrantName1);
-
-	                            if (quadrant1Opt.isPresent()) {
-	                                quadrantDistance.setQUADRANT_ID_1(quadrant1Opt.get().getQUADRANT_ID());
-	                            } else {
-	                                quadrantDistance.setQUADRANT_ID_1(BigDecimal.ZERO);
-	                            }
-
-	                            String quadrantName2 = quadrantName2Cell.getStringCellValue();
-	                            Optional<Quadrant> quadrant2Opt = quadrantRepo.findByName(quadrantName2);
-	                            if (quadrant2Opt.isPresent()) {
-	                                quadrantDistance.setQUADRANT_ID_2(quadrant2Opt.get().getQUADRANT_ID());
-	                            } else {
-	                                quadrantDistance.setQUADRANT_ID_2(BigDecimal.ZERO);
-	                            }
-
-	                            // Set the distance
-	                            quadrantDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
-	                            quadrantDistance.setID_Q_DISTANCE(quadrantDistanceServiceImpl.getNewId());
-	                            quadrantDistance.setSTATUS(BigDecimal.valueOf(1));
-	                            quadrantDistance.setCREATION_DATE(new Date());
-	                            quadrantDistance.setLAST_UPDATE_DATE(new Date());
-
-	                            quadrantDistanceServiceImpl.saveQuadrantDistance(quadrantDistance);
-	                            quadrantDistances.add(quadrantDistance);
-	                        } else {
+	                        if (quadrantName1Cell == null || quadrantName1Cell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Quadrant Name 1)");
 	                            continue;
 	                        }
+
+	                        if (quadrantName2Cell == null || quadrantName2Cell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Quadrant Name 2)");
+	                            continue;
+	                        }
+
+	                        if (distanceCell == null || distanceCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Salah pada Baris " + (i + 1) + " Kolom 5 (Distance)");
+	                            continue;
+	                        }
+
+	                        String quadrantName1 = quadrantName1Cell.getStringCellValue();
+	                        Optional<Quadrant> quadrant1Opt = quadrantRepo.findByName(quadrantName1);
+
+	                        if (quadrant1Opt.isPresent()) {
+	                            quadrantDistance.setQUADRANT_ID_1(quadrant1Opt.get().getQUADRANT_ID());
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Quadrant 1 pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            continue;
+	                        }
+
+	                        String quadrantName2 = quadrantName2Cell.getStringCellValue();
+	                        Optional<Quadrant> quadrant2Opt = quadrantRepo.findByName(quadrantName2);
+
+	                        if (quadrant2Opt.isPresent()) {
+	                            quadrantDistance.setQUADRANT_ID_2(quadrant2Opt.get().getQUADRANT_ID());
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Quadrant 2 pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            continue;
+	                        }
+
+	                        // Set the distance
+	                        quadrantDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
+	                        quadrantDistance.setID_Q_DISTANCE(quadrantDistanceServiceImpl.getNewId());
+	                        quadrantDistance.setSTATUS(BigDecimal.valueOf(1));
+	                        quadrantDistance.setCREATION_DATE(new Date());
+	                        quadrantDistance.setLAST_UPDATE_DATE(new Date());
+
+	                        quadrantDistances.add(quadrantDistance);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), quadrantDistances);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                quadrantDistanceServiceImpl.deleteAllQuadrantDistance();
+	                for (QuadrantDistance quadrantDistance : quadrantDistances) {
+	                    quadrantDistanceServiceImpl.saveQuadrantDistance(quadrantDistance);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), quadrantDistances);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
-
-
 
     @GetMapping("/exportQuadrantDistancesExcel") 
     public ResponseEntity<InputStreamResource> exportQuadrantDistancesExcel() throws IOException {
         String filename = "MASTER_QUADRANT_DISTANCE.xlsx"; 
 
         ByteArrayInputStream data = quadrantDistanceServiceImpl.exportQuadrantDistancesExcel();
+        InputStreamResource file = new InputStreamResource(data); 
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) 
+                .body(file); 
+    }
+    
+    @GetMapping("/layoutQuadrantDistancesExcel") 
+    public ResponseEntity<InputStreamResource> layoutQuadrantDistancesExcel() throws IOException {
+        String filename = "LAYOUT_QUADRANT_DISTANCE.xlsx"; 
+
+        ByteArrayInputStream data = quadrantDistanceServiceImpl.layoutQuadrantDistancesExcel();
         InputStreamResource file = new InputStreamResource(data); 
 
         return ResponseEntity.ok()

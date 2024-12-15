@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -148,7 +149,7 @@ public class PlantServiceImpl {
     
     public ByteArrayInputStream dataToExcel(List<Plant> plants) throws IOException {
         String[] header = {
-            "NOMOR",          
+            "NOMOR",
             "PLANT_ID",
             "PLANT_NAME"
         };
@@ -158,7 +159,7 @@ public class PlantServiceImpl {
 
         try {
             Sheet sheet = workbook.createSheet("PLANT DATA");
-            
+
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
@@ -171,14 +172,14 @@ public class PlantServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER); 
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            
-            sheet.setColumnWidth(1, (int) (10.5 * 256));
+            headerStyle.setAlignment(HorizontalAlignment.CENTER); 
 
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
@@ -188,7 +189,7 @@ public class PlantServiceImpl {
             }
 
             int rowIndex = 1;
-            int nomor = 1; 
+            int nomor = 1;
             for (Plant p : plants) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
@@ -198,11 +199,15 @@ public class PlantServiceImpl {
 
                 Cell idCell = dataRow.createCell(1);
                 idCell.setCellValue(p.getPLANT_ID().doubleValue());
-                idCell.setCellStyle(borderStyle); 
+                idCell.setCellStyle(borderStyle);
 
                 Cell nameCell = dataRow.createCell(2);
                 nameCell.setCellValue(p.getPLANT_NAME());
                 nameCell.setCellStyle(borderStyle);
+            }
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
             }
 
             workbook.write(out);
@@ -217,4 +222,73 @@ public class PlantServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutPlantsExcel () throws IOException {
+    	ByteArrayInputStream byteArrayInputStream = layoutPlantExcel();
+    	return byteArrayInputStream;
+    }
+    
+    public ByteArrayInputStream layoutPlantExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "PLANT_ID",
+            "PLANT_NAME"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            Sheet sheet = workbook.createSheet("PLANT DATA");
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int rowIndex = 1; rowIndex <= 3; rowIndex++) {
+                Row dataRow = sheet.createRow(rowIndex);
+                for (int colIndex = 0; colIndex < header.length; colIndex++) {
+                    Cell cell = dataRow.createCell(colIndex);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to create layout");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 }

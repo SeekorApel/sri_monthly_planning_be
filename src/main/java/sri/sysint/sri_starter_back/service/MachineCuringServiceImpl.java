@@ -148,7 +148,7 @@ public class MachineCuringServiceImpl {
         String[] header = {
             "NOMOR",
             "WORK_CENTER_TEXT",
-            "BUILDING_NAME", // Update header to BUILDING_NAME
+            "BUILDING_NAME",
             "CAVITY",
             "MACHINE_TYPE",
             "STATUS_USAGE"
@@ -225,12 +225,13 @@ public class MachineCuringServiceImpl {
                 Cell machinetypecell = dataRow.createCell(4);
                 machinetypecell.setCellValue(mc.getMACHINE_TYPE());
                 machinetypecell.setCellStyle(borderStyle);
-
+                
                 Cell statusUsageCell = dataRow.createCell(5);
-                statusUsageCell.setCellValue(mc.getSTATUS_USAGE().doubleValue());
+                statusUsageCell.setCellValue(mc.getSTATUS_USAGE() != null ? mc.getSTATUS_USAGE().doubleValue() : 0.0);
                 statusUsageCell.setCellStyle(borderStyle);
-            }
 
+            }
+            
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {

@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -288,6 +289,7 @@ public class MachineExtrudingController {
 
 	
 	@PostMapping("/saveMachineExtrudingsExcel")
+	@Transactional
 	public Response saveMachineExtrudingsExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -308,13 +310,12 @@ public class MachineExtrudingController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            machineExtrudingServiceImpl.deleteAllMachineExtruding();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<MachineExtruding> machineExtrudings = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -338,53 +339,77 @@ public class MachineExtrudingController {
 	                        Cell buildingNameCell = row.getCell(2);
 	                        Cell typeCell = row.getCell(3);
 
-	                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
-	                                && typeCell != null) {
-	                            String buildingName = buildingNameCell.getStringCellValue();
-	                            Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
-
-	                            if (buildingOpt.isPresent()) {
-	                                machineExtruding.setID_MACHINE_EXT(machineExtrudingServiceImpl.getNewId());
-	                                machineExtruding.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
-	                                machineExtruding.setTYPE(typeCell.getStringCellValue());
-	                                machineExtruding.setSTATUS(BigDecimal.valueOf(1));
-	                                machineExtruding.setCREATION_DATE(new Date());
-	                                machineExtruding.setLAST_UPDATE_DATE(new Date());
-
-	                                machineExtrudingServiceImpl.saveMachineExtruding(machineExtruding);
-	                                machineExtrudings.add(machineExtruding);
-	                            } else {
-	                                // Skip or handle unknown building names
-	                                System.out.println("Building not found for name: " + buildingName);
-	                                continue;
-	                            }
-	                        } else {
+	                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name)");
 	                            continue;
+	                        }
+
+	                        if (typeCell == null || typeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Type)");
+	                            continue;
+	                        }
+
+	                        String buildingName = buildingNameCell.getStringCellValue();
+	                        Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
+
+	                        if (buildingOpt.isPresent()) {
+	                            machineExtruding.setID_MACHINE_EXT(machineExtrudingServiceImpl.getNewId());
+	                            machineExtruding.setBUILDING_ID(buildingOpt.get().getBUILDING_ID());
+	                            machineExtruding.setTYPE(typeCell.getStringCellValue());
+	                            machineExtruding.setSTATUS(BigDecimal.valueOf(1));
+	                            machineExtruding.setCREATION_DATE(new Date());
+	                            machineExtruding.setLAST_UPDATE_DATE(new Date());
+
+	                            machineExtrudings.add(machineExtruding);
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Building pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineExtrudings);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                machineExtrudingServiceImpl.deleteAllMachineExtruding();
+	                for (MachineExtruding machineExtruding : machineExtrudings) {
+	                    machineExtrudingServiceImpl.saveMachineExtruding(machineExtruding);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineExtrudings);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
 
 
     @RequestMapping("/exportMachineExtrudingExcel")
     public ResponseEntity<InputStreamResource> exportMachineExtrudingExcel() throws IOException {
-        String filename = "MASTER_MACHINE_EXTRUDING.xlsx"; 
+        String filename = "EXPORT_MASTER_MACHINE_EXTRUDING.xlsx"; 
 
         ByteArrayInputStream data = machineExtrudingServiceImpl.exportMachineExtrudingsExcel();
+        InputStreamResource file = new InputStreamResource(data); 
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename) 
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
+    @RequestMapping("/layoutMachineExtrudingExcel")
+    public ResponseEntity<InputStreamResource> layoutMachineExtrudingExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_MACHINE_EXTRUDING.xlsx"; 
+
+        ByteArrayInputStream data = machineExtrudingServiceImpl.layoutMachineExtrudingsExcel();
         InputStreamResource file = new InputStreamResource(data); 
 
         return ResponseEntity.ok()
