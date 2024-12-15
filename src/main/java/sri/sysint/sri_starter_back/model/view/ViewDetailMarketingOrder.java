@@ -2,6 +2,8 @@ package sri.sysint.sri_starter_back.model.view;
 
 import java.math.BigDecimal;
 
+import javax.persistence.Column;
+
 public class ViewDetailMarketingOrder {
 	
 	 private BigDecimal detailId;        // ubah dari idDetail
@@ -34,6 +36,9 @@ public class ViewDetailMarketingOrder {
 	    private BigDecimal lockStatusM0;
 	    private BigDecimal lockStatusM1;
 	    private BigDecimal lockStatusM2;
+		private BigDecimal ar;
+		private BigDecimal defect;
+		private BigDecimal reject;
 	    private String itemCuring;
 
 		public BigDecimal getLockStatusM0() {
@@ -204,5 +209,25 @@ public class ViewDetailMarketingOrder {
 		public void setItemCuring(String itemCuring) {
 			this.itemCuring = itemCuring;
 		}
+		public BigDecimal getAr() {
+			return ar;
+		}
+		public void setAr(BigDecimal ar) {
+			this.ar = ar;
+		}
+		public BigDecimal getDefect() {
+			return defect;
+		}
+		public void setDefect(BigDecimal defect) {
+			this.defect = defect;
+		}
+		public BigDecimal getReject() {
+			return reject;
+		}
+		public void setReject(BigDecimal reject) {
+			this.reject = reject;
+		}
+		
+		
 		
 }
