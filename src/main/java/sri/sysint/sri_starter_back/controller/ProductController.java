@@ -441,5 +441,17 @@ public class ProductController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
+
+	    @GetMapping("/layoutProductsExcel")
+		public ResponseEntity<InputStreamResource> layoutProductsExcel() throws IOException {
+			String filename = "LAYOUT_MASTER_PRODUCT.xlsx";
+			ByteArrayInputStream data = quadrantServiceImpl.layoutProductsExcel();
+			InputStreamResource file = new InputStreamResource(data);
+
+			return ResponseEntity.ok()
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+					.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+					.body(file);
+		}
 	
 }

@@ -8,30 +8,42 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.ItemAssy;
+import sri.sysint.sri_starter_back.model.ItemCuring;
 import sri.sysint.sri_starter_back.model.Pattern;
 import sri.sysint.sri_starter_back.model.Product;
 import sri.sysint.sri_starter_back.model.ProductType;
+import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.repository.PatternRepo;
 import sri.sysint.sri_starter_back.repository.ProductRepo;
 import sri.sysint.sri_starter_back.repository.ProductTypeRepo;
 import sri.sysint.sri_starter_back.repository.SizeRepo;
+import sri.sysint.sri_starter_back.repository.ItemCuringRepo;
+import sri.sysint.sri_starter_back.repository.ItemAssyRepo;
 
 @Service
 @Transactional
@@ -45,6 +57,15 @@ public class ProductServiceImpl {
 	
 	@Autowired
     private ProductTypeRepo productTypeRepo;
+
+    @Autowired
+    private SizeRepo sizeRepo;
+	
+	@Autowired
+    private ItemCuringRepo itemCuringRepo;
+
+    @Autowired
+    private ItemAssyRepo itemAssyRepo;
 	
     public ProductServiceImpl(ProductRepo productRepo){
         this.productRepo = productRepo;
@@ -319,5 +340,135 @@ public class ProductServiceImpl {
         }
     }
 
+    public ByteArrayInputStream layoutproductsExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel( );
+        return byteArrayInputStream;
+    }
+    
+    public ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "PART_NUMBER",
+            "ITEM_CURING",
+            "PATTERN_NAME",  
+            "SIZE",
+            "CATEGORY",  
+            "DESCRIPTION",
+            "RIM",
+            "WIB_TUBE",
+            "ITEM_ASSY",
+            "ITEM_EXT",
+            "EXT_DESCRIPTION",
+            "QTY_PER_RAK",
+            "UPPER_CONSTANT",
+            "LOWER_CONSTANT"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<ItemCuring> activeItemCurings = itemCuringRepo.findItemCuringActive();
+            List<Pattern> activePatterns = patternRepo.findPatternActive();
+            List<Size> activeSizes = sizeRepo.findSizeActive();
+            List<ProductType> activeProductTypes = productTypeRepo.findProductTypeActive();
+            List<ItemAssy> activeItemAssys = itemAssyRepo.findItemAssyActive();
+
+            List<String> itemCuringID = activeItemCurings.stream()
+                .map(ItemCuring::getITEM_CURING)
+                .collect(Collectors.toList());
+
+            List<String> patternName = activePatterns.stream()
+                .map(Pattern::getPATTERN_NAME)
+                .collect(Collectors.toList());
+
+            List<String> sizeID = activeSizes.stream()
+                .map(Size::getSIZE_ID)
+                .collect(Collectors.toList());
+
+            List<String> productTypeCategory = activeProductTypes.stream()
+                .map(ProductType::getCATEGORY)
+                .collect(Collectors.toList());
+
+            List<String> itemAssyID = activeItemAssys.stream()
+                .map(ItemAssy::getITEM_ASSY)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("QUADRANT DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("BuildingNames");
+            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            int rowIndex = 1;
+            int nomor = 1;
+            
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export Quadrant data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 
 }

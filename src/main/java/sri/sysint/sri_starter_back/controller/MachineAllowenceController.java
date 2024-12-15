@@ -41,8 +41,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.MachineAllowence;
 import sri.sysint.sri_starter_back.model.MachineCuring;
+import sri.sysint.sri_starter_back.model.MachineTass;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.service.MachineAllowenceServiceImpl;
+
+import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
+import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 
 @CrossOrigin(maxAge = 3600)
 @RestController
@@ -52,9 +56,16 @@ public class MachineAllowenceController {
 
 	@Autowired
 	private MachineAllowenceServiceImpl machineAllowenceServiceImpl;
+
+	@Autowired
+    private MachineCuringRepo machineCuringRepo;
+
+    @Autowired
+    private MachineTassRepo machineTassRepo;
 	
 	@PersistenceContext	
 	private EntityManager em;
+	
 
 // START - GET MAPPING
 	@GetMapping("/getAllMachineAllowence")
@@ -268,13 +279,12 @@ public class MachineAllowenceController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            machineAllowenceServiceImpl.deleteAllMachineAllowence();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<MachineAllowence> machineAllowences = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -295,6 +305,8 @@ public class MachineAllowenceController {
 	                        }
 
 	                        MachineAllowence machineAllowence = new MachineAllowence();
+							MachineCuring machineCuring = new MachineCuring();
+							MachineTass machineTass = new MachineTass();
 
 	                        Cell idMachineCell = row.getCell(2);
 	                        Cell personResponsibleCell = row.getCell(3);
@@ -303,13 +315,44 @@ public class MachineAllowenceController {
 	                        Cell shift3Cell = row.getCell(6);
 	                        Cell shift1FridayCell = row.getCell(7);
 	                        Cell totalShift123Cell = row.getCell(8);
+	                        if (idMachineCell == null || idMachineCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (ID Machine)");
+	                            continue;
+	                        }
 
-	                        if (idMachineCell != null && personResponsibleCell != null 
-	                                && shift1Cell != null && shift1Cell.getCellType() == CellType.NUMERIC
-	                                && shift2Cell != null && shift2Cell.getCellType() == CellType.NUMERIC
-	                                && shift3Cell != null && shift3Cell.getCellType() == CellType.NUMERIC
-	                                && shift1FridayCell != null && shift1FridayCell.getCellType() == CellType.NUMERIC
-	                                && totalShift123Cell != null && totalShift123Cell.getCellType() == CellType.NUMERIC) {
+	                        if (personResponsibleCell == null || personResponsibleCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Person Responsible)");
+	                            continue;
+	                        }
+							if (shift1Cell == null || shift1Cell.getCellType() == CellType.BLANK) {
+								errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Shift 1)");
+								continue;
+							}
+
+							if (shift2Cell == null || shift2Cell.getCellType() == CellType.BLANK) {
+								errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Shift 2)");
+								continue;
+							}
+
+							if (shift3Cell == null || shift3Cell.getCellType() == CellType.BLANK) {
+								errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 7 (Shift 3)");
+								continue;
+							}
+
+							if (shift1FridayCell == null || shift1FridayCell.getCellType() == CellType.BLANK) {
+								errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 8 (Shift 1 Friday)");
+								continue;
+							}
+
+							if (totalShift123Cell == null || totalShift123Cell.getCellType() == CellType.BLANK) {
+								errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 9 (Total Shift 1, 2, 3)");
+								continue;
+							}
+							String machineid = idMachineCell.getStringCellValue();
+
+	                        Optional<MachineCuring> machineCuringOpt = machineCuringRepo.findById(machineid);
+	                        Optional<MachineTass> machineTassOpt = machineTassRepo.findById(machineid);
+							if(machineCuringOpt.isPresent()||machineTassOpt.isPresent()){
 
 	                            machineAllowence.setMACHINE_ALLOW_ID(machineAllowenceServiceImpl.getNewId());
 	                            machineAllowence.setID_MACHINE(idMachineCell.getStringCellValue());
@@ -323,25 +366,34 @@ public class MachineAllowenceController {
 	                            machineAllowence.setCREATION_DATE(new Date());
 	                            machineAllowence.setLAST_UPDATE_DATE(new Date());
 
-	                            machineAllowenceServiceImpl.saveMachineAllowence(machineAllowence);
 	                            machineAllowences.add(machineAllowence);
-	                        }
+	                        }else{
+	                            errorMessages.add("Data Tidak Valid, Data ID Machine pada Baris " + (i + 1) + " Tidak Ditemukan");
+							}
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineAllowences);
+					if(!errorMessages.isEmpty()){
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+					}
+					machineAllowenceServiceImpl.deleteAllMachineAllowence();
+					for(MachineAllowence machineAllowence : machineAllowences){
+						machineAllowenceServiceImpl.saveMachineAllowence(machineAllowence);
+					}
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineAllowences);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
 
-	    return response;
 	}
 	
 	@PostMapping("/restoreMachineAllowence")
@@ -385,6 +437,18 @@ public class MachineAllowenceController {
     public ResponseEntity<InputStreamResource> exportMachineAllowenceExcel() throws IOException {
         String filename = "MASTER_MACHINE_ALLOWENCE.xlsx";
         ByteArrayInputStream data = machineAllowenceServiceImpl.exportMachineAllowenceExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+
+	@GetMapping("/layoutMachineAllowencesExcel")
+    public ResponseEntity<InputStreamResource> layoutQuadrantsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_MACHINE_ALLOWENCE.xlsx";
+        ByteArrayInputStream data = machineAllowenceServiceImpl.layoutMachineAllowencesExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()
