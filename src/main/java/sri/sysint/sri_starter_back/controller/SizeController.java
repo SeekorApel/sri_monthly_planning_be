@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -288,6 +289,7 @@ public class SizeController {
 
 	
 	@PostMapping("/saveSizeExcel")
+	@Transactional
 	public Response saveSizeExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -308,19 +310,17 @@ public class SizeController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            sizeServiceImpl.deleteAllSize();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Size> sizes = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -336,46 +336,72 @@ public class SizeController {
 	                        }
 
 	                        Size size = new Size();
-
 	                        Cell sizeIdCell = row.getCell(1);
 	                        Cell descriptionCell = row.getCell(2);
 
-	                        if (descriptionCell != null) {
-
-	                            size.setSIZE_ID(sizeIdCell.getStringCellValue());
-	                            size.setDESCRIPTION(descriptionCell.getStringCellValue());
-	                            size.setSTATUS(BigDecimal.valueOf(1));
-	                            size.setCREATION_DATE(new Date());
-	                            size.setLAST_UPDATE_DATE(new Date());
-
-	                            sizeServiceImpl.saveSize(size);
-	                            sizes.add(size);
-	                        } else {
+	                        if (sizeIdCell == null || sizeIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (Size ID)");
 	                            continue;
 	                        }
+
+	                        if (descriptionCell == null || descriptionCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Description)");
+	                            continue;
+	                        }
+
+	                        size.setSIZE_ID(sizeIdCell.getStringCellValue());
+	                        size.setDESCRIPTION(descriptionCell.getStringCellValue());
+	                        size.setSTATUS(BigDecimal.valueOf(1));
+	                        size.setCREATION_DATE(new Date());
+	                        size.setLAST_UPDATE_DATE(new Date());
+
+	                        sizes.add(size);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), sizes);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                sizeServiceImpl.deleteAllSize();
+	                for (Size size : sizes) {
+	                    sizeServiceImpl.saveSize(size);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), sizes);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 	
     @GetMapping("/exportSizeexcel")
     public ResponseEntity<InputStreamResource> exportSizesExcel() throws IOException {
-        String filename = "MASTER_SIZE.xlsx";
+        String filename = "EXPORT_MASTER_SIZE.xlsx";
 
         ByteArrayInputStream data = sizeServiceImpl.exportSizesExcel();
+        InputStreamResource file = new InputStreamResource(data); 
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename) 
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) 
+                .body(file); 
+    }
+    
+    @GetMapping("/layoutSizeexcel")
+    public ResponseEntity<InputStreamResource> layoutSizeexcel() throws IOException {
+        String filename = "LAYOUT_MASTER_SIZE.xlsx";
+
+        ByteArrayInputStream data = sizeServiceImpl.layoutSizesExcel();
         InputStreamResource file = new InputStreamResource(data); 
 
         return ResponseEntity.ok()

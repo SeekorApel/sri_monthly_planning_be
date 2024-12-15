@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -288,6 +289,7 @@ public class BuildingDistanceController {
 
 	
 	@PostMapping("/saveBuildingDistancesExcel")
+	@Transactional
 	public Response saveBuildingDistancesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -308,13 +310,12 @@ public class BuildingDistanceController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            buildingDistanceServiceImpl.deleteAllBuildingDistance();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<BuildingDistance> buildingDistances = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -322,6 +323,7 @@ public class BuildingDistanceController {
 	                    if (row != null) {
 	                        boolean isEmptyRow = true;
 
+	                        // Check if the row is empty
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
 	                            Cell cell = row.getCell(j);
 	                            if (cell != null && cell.getCellType() != CellType.BLANK) {
@@ -336,66 +338,84 @@ public class BuildingDistanceController {
 
 	                        BuildingDistance buildingDistance = new BuildingDistance();
 
-	                        // Read BUILDING_NAME_1 and BUILDING_NAME_2 from the Excel file
+	                        // Read BUILDING_NAME_1, BUILDING_NAME_2, and DISTANCE from the Excel file
 	                        Cell buildingName1Cell = row.getCell(2);
 	                        Cell buildingName2Cell = row.getCell(3);
 	                        Cell distanceCell = row.getCell(4);
 
-	                        if (buildingName1Cell != null && buildingName1Cell.getCellType() == CellType.STRING
-	                                && buildingName2Cell != null && buildingName2Cell.getCellType() == CellType.STRING
-	                                && distanceCell != null && distanceCell.getCellType() == CellType.NUMERIC) {
-
-	                            // Find the BUILDING_ID by name for BUILDING_NAME_1
-	                            Optional<Building> building1Opt = buildingRepo.findByName(buildingName1Cell.getStringCellValue());
-	                            if (building1Opt.isPresent()) {
-	                                buildingDistance.setBUILDING_ID_1(building1Opt.get().getBUILDING_ID());
-	                            } else {
-	                                continue; // Skip this row if the building name is not found
-	                            }
-
-	                            // Find the BUILDING_ID by name for BUILDING_NAME_2
-	                            Optional<Building> building2Opt = buildingRepo.findByName(buildingName2Cell.getStringCellValue());
-	                            if (building2Opt.isPresent()) {
-	                                buildingDistance.setBUILDING_ID_2(building2Opt.get().getBUILDING_ID());
-	                            } else {
-	                                continue; // Skip this row if the building name is not found
-	                            }
-
-	                            // Set other fields
-	                            buildingDistance.setID_B_DISTANCE(buildingDistanceServiceImpl.getNewId());
-	                            buildingDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
-	                            buildingDistance.setSTATUS(BigDecimal.valueOf(1));
-	                            buildingDistance.setCREATION_DATE(new Date());
-	                            buildingDistance.setLAST_UPDATE_DATE(new Date());
-
-	                            buildingDistanceServiceImpl.saveBuildingDistance(buildingDistance);
-	                            buildingDistances.add(buildingDistance);
-	                        } else {
-	                            continue; // Skip the row if necessary data is missing or invalid
+	                        if (buildingName1Cell == null || buildingName1Cell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name 1)");
+	                            continue;
 	                        }
+
+	                        if (buildingName2Cell == null || buildingName2Cell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Building Name 2)");
+	                            continue;
+	                        }
+
+	                        if (distanceCell == null || distanceCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 5 (Distance)");
+	                            continue;
+	                        }
+
+	                        // Find the BUILDING_ID by name for BUILDING_NAME_1
+	                        Optional<Building> building1Opt = buildingRepo.findByName(buildingName1Cell.getStringCellValue());
+	                        if (building1Opt.isPresent()) {
+	                            buildingDistance.setBUILDING_ID_1(building1Opt.get().getBUILDING_ID());
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, BUILDING_NAME_1 pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            continue;
+	                        }
+
+	                        // Find the BUILDING_ID by name for BUILDING_NAME_2
+	                        Optional<Building> building2Opt = buildingRepo.findByName(buildingName2Cell.getStringCellValue());
+	                        if (building2Opt.isPresent()) {
+	                            buildingDistance.setBUILDING_ID_2(building2Opt.get().getBUILDING_ID());
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, BUILDING_NAME_2 pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            continue;
+	                        }
+
+	                        // Set other fields
+	                        buildingDistance.setID_B_DISTANCE(buildingDistanceServiceImpl.getNewId());
+	                        buildingDistance.setDISTANCE(BigDecimal.valueOf(distanceCell.getNumericCellValue()));
+	                        buildingDistance.setSTATUS(BigDecimal.valueOf(1));
+	                        buildingDistance.setCREATION_DATE(new Date());
+	                        buildingDistance.setLAST_UPDATE_DATE(new Date());
+
+	                        buildingDistances.add(buildingDistance);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), buildingDistances);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                // Delete all previous building distances before saving the new ones
+	                buildingDistanceServiceImpl.deleteAllBuildingDistance();
+	                for (BuildingDistance buildingDistance : buildingDistances) {
+	                    buildingDistanceServiceImpl.saveBuildingDistance(buildingDistance);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), buildingDistances);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
-
 
 	
     @RequestMapping("/exportBuildingDistancesExcel")
     public ResponseEntity<InputStreamResource> exportBuildingDistancesExcel() throws IOException {
-        String filename = "MASTER_BUILDING_DISTANCE.xlsx";
+        String filename = "EXPORT_MASTER_BUILDING_DISTANCE.xlsx";
 
         ByteArrayInputStream data = buildingDistanceServiceImpl.exportBuildingDistancesExcel();
         InputStreamResource file = new InputStreamResource(data);
@@ -406,7 +426,18 @@ public class BuildingDistanceController {
                 .body(file);
     }
 
+    @RequestMapping("/layoutBuildingDistancesExcel")
+    public ResponseEntity<InputStreamResource> layoutBuildingDistancesExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_BUILDING_DISTANCE.xlsx";
 
+        ByteArrayInputStream data = buildingDistanceServiceImpl.layoutBuildingDistancesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
 //END - POST MAPPING
 //START - PUT MAPPING
 //END - PUT MAPPING

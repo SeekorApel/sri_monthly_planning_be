@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -286,9 +287,9 @@ public class BuildingController {
 
 	    return response;
 	}
-
 	
 	@PostMapping("/saveBuildingsExcel")
+	@Transactional
 	public Response saveBuildingsExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -309,13 +310,12 @@ public class BuildingController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            buildingServiceImpl.deleteAllBuilding();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Building> buildings = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -339,51 +339,77 @@ public class BuildingController {
 	                        Cell plantNameCell = row.getCell(2);
 	                        Cell buildingNameCell = row.getCell(3);
 
-	                        if (plantNameCell != null && buildingNameCell != null) {
-	                            String plantName = plantNameCell.getStringCellValue();
-
-	                            Optional<Plant> plantOpt = plantRepo.findByName(plantName);
-
-	                            if (plantOpt.isPresent()) {
-	                                Plant plant = plantOpt.get(); 
-	                                building.setBUILDING_ID(buildingServiceImpl.getNewId());
-	                                building.setPLANT_ID(plant.getPLANT_ID()); 
-	                                building.setBUILDING_NAME(buildingNameCell.getStringCellValue());
-	                                building.setSTATUS(BigDecimal.valueOf(1));
-	                                building.setCREATION_DATE(new Date());
-	                                building.setLAST_UPDATE_DATE(new Date());
-
-	                                buildingServiceImpl.saveBuilding(building);
-	                                buildings.add(building);
-	                            } else {
-	                                System.err.println("PLANT_NAME not found in database: " + plantName);
-	                                continue; 
-	                            }
-	                        } else {
-	                            continue; 
+	                        if (plantNameCell == null || plantNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Plant Name)");
+	                            continue;
 	                        }
 
+	                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Building Name)");
+	                            continue;
+	                        }
+
+	                        String plantName = plantNameCell.getStringCellValue();
+
+	                        Optional<Plant> plantOpt = plantRepo.findByName(plantName);
+
+	                        if (plantOpt.isPresent()) {
+	                            Plant plant = plantOpt.get();
+	                            building.setBUILDING_ID(buildingServiceImpl.getNewId());
+	                            building.setPLANT_ID(plant.getPLANT_ID());
+	                            building.setBUILDING_NAME(buildingNameCell.getStringCellValue());
+	                            building.setSTATUS(BigDecimal.valueOf(1));
+	                            building.setCREATION_DATE(new Date());
+	                            building.setLAST_UPDATE_DATE(new Date());
+
+	                            buildings.add(building);
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Data Plant pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        }
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), buildings);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                buildingServiceImpl.deleteAllBuilding();
+	                for (Building building : buildings) {
+	                    buildingServiceImpl.saveBuilding(building);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), buildings);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
 
+    
+    @RequestMapping("/layoutBuildingsExcel")
+    public ResponseEntity<InputStreamResource> layoutBuildingsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_BUILDING.xlsx";
+
+        ByteArrayInputStream data = buildingServiceImpl.layoutBuildingsExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
     @RequestMapping("/exportBuildingsExcel")
     public ResponseEntity<InputStreamResource> exportBuildingsExcel() throws IOException {
-        String filename = "MASTER_BUILDING.xlsx";
+        String filename = "EXPORT_MASTER_BUILDING.xlsx";
 
         ByteArrayInputStream data = buildingServiceImpl.exportBuildingsExcel();
         InputStreamResource file = new InputStreamResource(data);
@@ -393,8 +419,6 @@ public class BuildingController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
-    
-    
     
 //END - POST MAPPING
 //START - PUT MAPPING

@@ -8,18 +8,25 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -166,6 +173,11 @@ public class BuildingServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+            List<Plant> activePlants = plantRepo.findPlantActive();
+            List<String> plantNames = activePlants.stream()
+                .map(Plant::getPLANT_NAME)
+                .collect(Collectors.toList());
+
             Sheet sheet = workbook.createSheet("BUILDING DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -179,13 +191,16 @@ public class BuildingServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
+            
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
             }
@@ -196,6 +211,19 @@ public class BuildingServiceImpl {
                 cell.setCellValue(header[i]);
                 cell.setCellStyle(headerStyle);
             }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_PLANTS");
+            for (int i = 0; i < plantNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(plantNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("PlantNames");
+            namedRange.setRefersToFormula("HIDDEN_PLANTS!$A$1:$A$" + plantNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
 
             int rowIndex = 1;
             for (Building b : buildings) {
@@ -209,27 +237,134 @@ public class BuildingServiceImpl {
                 idCell.setCellValue(b.getBUILDING_ID().doubleValue());
                 idCell.setCellStyle(borderStyle);
 
-                // Ambil PLANT_NAME berdasarkan PLANT_ID
+                Cell plantNameCell = dataRow.createCell(2);
+                plantNameCell.setCellStyle(borderStyle);
+                
                 String plantName = "";
                 if (b.getPLANT_ID() != null) {
-                    Plant plant = plantRepo.findById(b.getPLANT_ID()).orElse(null);
-                    plantName = (plant != null) ? plant.getPLANT_NAME() : "Unknown Plant";
+                    Plant plant = activePlants.stream()
+                        .filter(p -> p.getPLANT_ID().equals(b.getPLANT_ID()))
+                        .findFirst()
+                        .orElse(null);
+                    plantName = (plant != null) ? plant.getPLANT_NAME() : "";
                 }
-
-                Cell plantNameCell = dataRow.createCell(2);
                 plantNameCell.setCellValue(plantName);
-                plantNameCell.setCellStyle(borderStyle);
 
                 Cell nameCell = dataRow.createCell(3);
                 nameCell.setCellValue(b.getBUILDING_NAME());
                 nameCell.setCellStyle(borderStyle);
             }
 
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("PlantNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Gagal mengekspor data Building");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
+    
+    public ByteArrayInputStream layoutBuildingsExcel() throws IOException {
+        List<Building> buildings = buildingRepo.getDataOrderId();
+        ByteArrayInputStream byteArrayInputStream = layoutBuildingExcel();
+        return byteArrayInputStream;
+    }
+    
+    public ByteArrayInputStream layoutBuildingExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "BUILDING_ID",
+            "PLANT_NAME",
+            "BUILDING_NAME"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<Plant> activePlants = plantRepo.findPlantActive();
+            List<String> plantNames = activePlants.stream()
+                .map(Plant::getPLANT_NAME)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("BUILDING DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+            
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_PLANTS");
+            for (int i = 0; i < plantNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(plantNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("PlantNames");
+            namedRange.setRefersToFormula("HIDDEN_PLANTS!$A$1:$A$" + plantNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("PlantNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Gagal membuat layout Building");
             throw e;
         } finally {
             workbook.close();

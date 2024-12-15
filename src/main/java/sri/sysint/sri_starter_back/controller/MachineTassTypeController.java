@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -289,9 +290,9 @@ public class MachineTassTypeController {
 
 			    return response;
 			}
-
 			
 			@PostMapping("/saveMachineTassTypeExcel")
+			@Transactional
 			public Response saveMachineTassTypesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 			    String header = req.getHeader("Authorization");
 
@@ -312,13 +313,12 @@ public class MachineTassTypeController {
 			                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 			            }
 
-			            machineTassTypeServiceImpl.deleteAllMachineTassType();
-
 			            try (InputStream inputStream = file.getInputStream()) {
 			                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 			                XSSFSheet sheet = workbook.getSheetAt(0);
 
 			                List<MachineTassType> machineTassTypes = new ArrayList<>();
+			                List<String> errorMessages = new ArrayList<>();
 
 			                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 			                    Row row = sheet.getRow(i);
@@ -339,56 +339,80 @@ public class MachineTassTypeController {
 			                        }
 
 			                        MachineTassType machineTassType = new MachineTassType();
-
 			                        Cell codeCell = row.getCell(1);
-			                        Cell settingValueCell = row.getCell(2); // Use description instead of ID
+			                        Cell settingValueCell = row.getCell(2);
 			                        Cell descriptionCell = row.getCell(3);
 
-			                        if (codeCell != null && settingValueCell != null && descriptionCell != null) {
-			                            String settingValue = settingValueCell.getStringCellValue();
+			                        if (codeCell == null || codeCell.getCellType() == CellType.BLANK) {
+			                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (Machine Tass Type ID)");
+			                            continue;
+			                        }
 
-			                            // Find SETTING_ID by SETTING_DESCRIPTION
-			                            Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
+			                        if (settingValueCell == null || settingValueCell.getCellType() == CellType.BLANK) {
+			                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Setting Value)");
+			                            continue;
+			                        }
 
-			                            if (settingOptional.isPresent()) {
-			                                machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
-			                                machineTassType.setSETTING_ID(settingOptional.get().getSETTING_ID());
-			                                machineTassType.setDESCRIPTION(descriptionCell.getStringCellValue());
-			                                machineTassType.setSTATUS(BigDecimal.valueOf(1));
-			                                machineTassType.setCREATION_DATE(new Date());
-			                                machineTassType.setLAST_UPDATE_DATE(new Date());
+			                        if (descriptionCell == null || descriptionCell.getCellType() == CellType.BLANK) {
+			                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Description)");
+			                            continue;
+			                        }
 
-			                                machineTassTypeServiceImpl.saveMachineTassType(machineTassType);
-			                                machineTassTypes.add(machineTassType);
-			                            } else {
-			                                System.err.println("Setting Value not found: " + settingValue);
-			                                continue;
-			                            }
+			                        String settingValue = null;
+			                        if (settingValueCell.getCellType() == CellType.NUMERIC) {
+			                            settingValue = String.valueOf((int) settingValueCell.getNumericCellValue());
+			                        } else if (settingValueCell.getCellType() == CellType.STRING) {
+			                            settingValue = settingValueCell.getStringCellValue();
 			                        } else {
 			                            continue;
 			                        }
+
+			                        Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
+			                        if (settingOptional.isPresent()) {
+			                        	machineTassType.setSETTING_ID(settingOptional.get().getSETTING_ID());
+			                        } else {
+			                            errorMessages.add("Data Tidak Valid, Data Setting pada Baris " + (i + 1) + " Tidak Ditemukan");
+			                            continue;
+			                        }
+
+			                            machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
+			                            machineTassType.setSETTING_ID(settingOptional.get().getSETTING_ID());
+			                            machineTassType.setDESCRIPTION(descriptionCell.getStringCellValue());
+			                            machineTassType.setSTATUS(BigDecimal.valueOf(1));
+			                            machineTassType.setCREATION_DATE(new Date());
+			                            machineTassType.setLAST_UPDATE_DATE(new Date());
+
+			                        
 			                    }
 			                }
 
-			                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineTassTypes);
+			                if (!errorMessages.isEmpty()) {
+			                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+			                }
+
+			                machineTassTypeServiceImpl.deleteAllMachineTassType();
+			                for (MachineTassType machineTassType : machineTassTypes) {
+			                    machineTassTypeServiceImpl.saveMachineTassType(machineTassType);
+			                }
+
+			                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineTassTypes);
 
 			            } catch (IOException e) {
-			                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+			                throw new RuntimeException("Error processing file", e);
 			            }
 			        } else {
 			            throw new ResourceNotFoundException("User not found");
 			        }
+			    } catch (IllegalArgumentException e) {
+			        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 			    } catch (Exception e) {
 			        throw new ResourceNotFoundException("JWT token is not valid or expired");
 			    }
-
-			    return response;
 			}
-
 
 		    @GetMapping("/exportMachineTassTypeExcel")
 		    public ResponseEntity<InputStreamResource> exportMachineTassTypesExcel() throws IOException {
-		        String filename = "MACHINE_TASS_TYPE.xlsx";
+		        String filename = "EXPORT_MACHINE_TASS_TYPE.xlsx";
 
 		        ByteArrayInputStream data = machineTassTypeServiceImpl.exportMachineTassTypesExcel();
 		        InputStreamResource file = new InputStreamResource(data);
@@ -399,7 +423,18 @@ public class MachineTassTypeController {
 		                .body(file);
 		    }
 			
-		    
+		    @GetMapping("/layoutMachineTassTypeExcel")
+		    public ResponseEntity<InputStreamResource> layoutMachineTassTypeExcel() throws IOException {
+		        String filename = "LAYOUT_MACHINE_TASS_TYPE.xlsx";
+
+		        ByteArrayInputStream data = machineTassTypeServiceImpl.layoutMachineTassTypesExcel();
+		        InputStreamResource file = new InputStreamResource(data);
+
+		        return ResponseEntity.ok()
+		                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+		                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+		                .body(file);
+		    }
 //END - POST MAPPING
 //START - PUT MAPPING
 //END - PUT MAPPING

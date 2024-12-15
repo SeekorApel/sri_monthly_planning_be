@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -283,9 +284,9 @@ public class SettingController {
 
 	    return response;
 	}
-
 	
 	@PostMapping("/saveSettingsExcel")
+	@Transactional
 	public Response saveSettingsExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -306,19 +307,17 @@ public class SettingController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            settingServiceImpl.deleteAllSettings();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Setting> settings = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -330,60 +329,77 @@ public class SettingController {
 	                        }
 
 	                        if (isEmptyRow) {
-	                            continue; 
+	                            continue;
 	                        }
 
 	                        Setting setting = new Setting();
-
 	                        Cell keyCell = row.getCell(2);
 	                        Cell valueCell = row.getCell(3);
 	                        Cell descriptionCell = row.getCell(4);
 
-	                        if (keyCell != null 
-	                                && valueCell != null 
-	                                && descriptionCell != null ) {
-	                            
-	                            setting.setSETTING_ID(settingServiceImpl.getNewId());
-	                            setting.setSETTING_KEY(keyCell.getStringCellValue());
-	                            String valueString = "";
-	                            if (valueCell.getCellType() == CellType.STRING) {
-	                                valueString = valueCell.getStringCellValue();
-	                            } else if (valueCell.getCellType() == CellType.NUMERIC) {
-	                                valueString = String.valueOf(valueCell.getNumericCellValue()); 
-	                            }
-	                            
-	                            setting.setSETTING_VALUE(valueString);
-	                            setting.setDESCRIPTION(descriptionCell.getStringCellValue());
-	                            setting.setSTATUS(BigDecimal.valueOf(1));
-	                            setting.setCREATION_DATE(new Date());
-	                            setting.setLAST_UPDATE_DATE(new Date());
-
-	                            settingServiceImpl.saveSetting(setting);
-	                            settings.add(setting);
-	                        } else {
+	                        if (keyCell == null || keyCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Setting Key)");
 	                            continue;
 	                        }
+
+	                        if (valueCell == null || valueCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Setting Value)");
+	                            continue;
+	                        }
+
+	                        if (descriptionCell == null || descriptionCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Description)");
+	                            continue;
+	                        }
+
+	                        setting.setSETTING_ID(settingServiceImpl.getNewId());
+	                        setting.setSETTING_KEY(keyCell.getStringCellValue());
+	                        
+	                        String valueString = "";
+	                        if (valueCell.getCellType() == CellType.STRING) {
+	                            valueString = valueCell.getStringCellValue();
+	                        } else if (valueCell.getCellType() == CellType.NUMERIC) {
+	                            valueString = String.valueOf(valueCell.getNumericCellValue());
+	                        }
+
+	                        setting.setSETTING_VALUE(valueString);
+	                        setting.setDESCRIPTION(descriptionCell.getStringCellValue());
+	                        setting.setSTATUS(BigDecimal.valueOf(1));
+	                        setting.setCREATION_DATE(new Date());
+	                        setting.setLAST_UPDATE_DATE(new Date());
+
+	                        settings.add(setting);
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), settings);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                settingServiceImpl.deleteAllSettings();
+	                for (Setting setting : settings) {
+	                    settingServiceImpl.saveSetting(setting);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), settings);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 	
     @RequestMapping("/exportSettingsExcel")
     public ResponseEntity<InputStreamResource> exportBuildingsExcel() throws IOException {
-        String filename = "MASTER_SETTING.xlsx";
+        String filename = "EXPORT_MASTER_SETTING.xlsx";
 
         ByteArrayInputStream data = settingServiceImpl.exportSettingsExcel();
         InputStreamResource file = new InputStreamResource(data);
@@ -394,6 +410,18 @@ public class SettingController {
                 .body(file);
     }
 
+    @RequestMapping("/layoutSettingsExcel")
+    public ResponseEntity<InputStreamResource> layoutSettingsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_SETTING.xlsx";
+
+        ByteArrayInputStream data = settingServiceImpl.layoutSettingsExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
 //END - POST MAPPING
 //START - PUT MAPPING
 //END - PUT MAPPING

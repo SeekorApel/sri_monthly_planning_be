@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -288,6 +289,7 @@ public class QuadrantController {
 
 	
 	@PostMapping("/saveQuandrantExcel")
+	@Transactional
 	public Response saveQuadrantsExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
 
@@ -308,19 +310,17 @@ public class QuadrantController {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
 
-	            quadrantServiceImpl.deleteAllQuadrant();
-
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Quadrant> quadrants = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -336,55 +336,82 @@ public class QuadrantController {
 	                        }
 
 	                        Quadrant quadrant = new Quadrant();
-	                        Cell buildingNameCell = row.getCell(2); // Assuming BUILDING_NAME is in the third column
-	                        Cell quadrantNameCell = row.getCell(3); // Assuming QUADRANT_NAME is in the fourth column
+	                        Cell buildingNameCell = row.getCell(2); 
+	                        Cell quadrantNameCell = row.getCell(3); 
 
-	                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
-	                                && quadrantNameCell != null) {
+	                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name)");
+	                            continue;
+	                        }
 
-	                            // Get the building name from the Excel file
-	                            String buildingName = buildingNameCell.getStringCellValue();
+	                        if (quadrantNameCell == null || quadrantNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Quadrant Name)");
+	                            continue;
+	                        }
 
-	                            // Find the building by name
-	                            Building building = buildingRepo.findByName(buildingName)
-	                                    .orElseThrow(() -> new ResourceNotFoundException("Building not found: " + buildingName));
+	                        String buildingName = buildingNameCell.getStringCellValue();
 
+	                        Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
+
+	                        if (buildingOpt.isPresent()) {
+	                            Building building = buildingOpt.get();
 	                            quadrant.setQUADRANT_ID(quadrantServiceImpl.getNewId());
-	                            quadrant.setBUILDING_ID(building.getBUILDING_ID()); // Set the BUILDING_ID from the found Building
+	                            quadrant.setBUILDING_ID(building.getBUILDING_ID()); 
 	                            quadrant.setQUADRANT_NAME(quadrantNameCell.getStringCellValue());
 	                            quadrant.setSTATUS(BigDecimal.valueOf(1));
 	                            quadrant.setCREATION_DATE(new Date());
 	                            quadrant.setLAST_UPDATE_DATE(new Date());
 
-	                            quadrantServiceImpl.saveQuadrant(quadrant);
 	                            quadrants.add(quadrant);
 	                        } else {
-	                            continue;
+	                            errorMessages.add("Data Tidak Valid, Data Building pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
 	                    }
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), quadrants);
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                quadrantServiceImpl.deleteAllQuadrant();
+	                for (Quadrant quadrant : quadrants) {
+	                    quadrantServiceImpl.saveQuadrant(quadrant);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), quadrants);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 
 
 
     @GetMapping("/exportQuadrantsExcel")
     public ResponseEntity<InputStreamResource> exportQuadrantsExcel() throws IOException {
-        String filename = "MASTER_QUADRANT.xlsx";
+        String filename = "EXPORT_MASTER_QUADRANT.xlsx";
         ByteArrayInputStream data = quadrantServiceImpl.exportQuadrantsExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
+    @GetMapping("/layoutQuadrantsExcel")
+    public ResponseEntity<InputStreamResource> layoutQuadrantsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_QUADRANT.xlsx";
+        ByteArrayInputStream data = quadrantServiceImpl.layoutQuadrantsExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()
