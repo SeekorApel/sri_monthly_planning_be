@@ -8,25 +8,37 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
-import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.MaxCapacity;
+import sri.sysint.sri_starter_back.model.Product;
 import sri.sysint.sri_starter_back.repository.MaxCapacityRepo;
+import sri.sysint.sri_starter_back.repository.ProductRepo;
+import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
+
+
 
 
 @Service
@@ -34,7 +46,10 @@ import sri.sysint.sri_starter_back.repository.MaxCapacityRepo;
 public class MaxCapacityServiceImpl {
 	@Autowired
 	private MaxCapacityRepo maxCapacityRepo;
-	
+	@Autowired
+	private ProductRepo productRepo;
+	@Autowired
+	private MachineCuringTypeRepo machineCuringTypeRepo;
 	public MaxCapacityServiceImpl(MaxCapacityRepo maxCapacityRepo){
         this.maxCapacityRepo = maxCapacityRepo;
     }
@@ -167,6 +182,11 @@ public class MaxCapacityServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+            List<BigDecimal> productNames = productRepo.findProductActive()
+                .stream().map(Product::getPART_NUMBER).collect(Collectors.toList());
+            List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive()
+                .stream().map(MachineCuringType::getMACHINECURINGTYPE_ID).collect(Collectors.toList());
+
             Sheet sheet = workbook.createSheet("MAX CAPACITY DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -180,6 +200,7 @@ public class MaxCapacityServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
@@ -188,7 +209,7 @@ public class MaxCapacityServiceImpl {
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
             for (int i = 0; i < header.length; i++) {
-                sheet.setColumnWidth(i, 20 * 256); // Set column width
+                sheet.setColumnWidth(i, 20 * 256);
             }
 
             Row headerRow = sheet.createRow(0);
@@ -198,12 +219,37 @@ public class MaxCapacityServiceImpl {
                 cell.setCellStyle(headerStyle);
             }
 
+            Sheet hiddenSheet1 = workbook.createSheet("HIDDEN_PRODUCTS");
+            for (int i = 0; i < productNames.size(); i++) {
+                Row row = hiddenSheet1.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(productNames.get(i).doubleValue());
+            }
+            
+            Sheet hiddenSheet2 = workbook.createSheet("HIDDEN_MACHINES");
+            for (int i = 0; i < machineCuringTypes.size(); i++) {
+                Row row = hiddenSheet2.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineCuringTypes.get(i));
+            }
+
+            Name namedRange1 = workbook.createName();
+            namedRange1.setNameName("ProductNames");
+            namedRange1.setRefersToFormula("HIDDEN_PRODUCTS!$A$1:$A$" + productNames.size());
+
+            Name namedRange2 = workbook.createName();
+            namedRange2.setNameName("MachineTypes");
+            namedRange2.setRefersToFormula("HIDDEN_MACHINES!$A$1:$A$" + machineCuringTypes.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet1), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet2), true);
+
             int rowIndex = 1;
             for (MaxCapacity m : maxCapacities) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
                 Cell nomorCell = dataRow.createCell(0);
-                nomorCell.setCellValue(rowIndex - 1); // Set the NOMOR cell
+                nomorCell.setCellValue(rowIndex - 1);
                 nomorCell.setCellStyle(borderStyle);
 
                 Cell maxCapIdCell = dataRow.createCell(1);
@@ -211,11 +257,11 @@ public class MaxCapacityServiceImpl {
                 maxCapIdCell.setCellStyle(borderStyle);
 
                 Cell productIdCell = dataRow.createCell(2);
-                productIdCell.setCellValue(m.getPRODUCT_ID() != null ? m.getPRODUCT_ID().doubleValue() : null);
+                productIdCell.setCellValue("");
                 productIdCell.setCellStyle(borderStyle);
 
                 Cell machineCuringTypeIdCell = dataRow.createCell(3);
-                machineCuringTypeIdCell.setCellValue(m.getMACHINECURINGTYPE_ID() != null ? m.getMACHINECURINGTYPE_ID() : "");
+                machineCuringTypeIdCell.setCellValue("");
                 machineCuringTypeIdCell.setCellStyle(borderStyle);
 
                 Cell cycleTimeCell = dataRow.createCell(4);
@@ -235,6 +281,22 @@ public class MaxCapacityServiceImpl {
                 capacityShift3Cell.setCellStyle(borderStyle);
             }
 
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint productConstraint = validationHelper.createFormulaListConstraint("ProductNames");
+            CellRangeAddressList productAddressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation productValidation = validationHelper.createValidation(productConstraint, productAddressList);
+            productValidation.setSuppressDropDownArrow(true);
+            productValidation.setShowErrorBox(true);
+            sheet.addValidationData(productValidation);
+
+            DataValidationConstraint machineConstraint = validationHelper.createFormulaListConstraint("MachineTypes");
+            CellRangeAddressList machineAddressList = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation machineValidation = validationHelper.createValidation(machineConstraint, machineAddressList);
+            machineValidation.setSuppressDropDownArrow(true);
+            machineValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineValidation);
+
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -246,6 +308,128 @@ public class MaxCapacityServiceImpl {
             out.close();
         }
     }
+
+    public ByteArrayInputStream layoutMaxCapacitysExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
+    
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "MAX_CAPACITY_ID",
+            "PART_NUMBER",
+            "MACHINECURINGTYPE",
+            "CYCLE_TIME",
+            "CAPACITY_SHIFT_1",
+            "CAPACITY_SHIFT_2",
+            "CAPACITY_SHIFT_3"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<BigDecimal> productNames = productRepo.findProductActive()
+                .stream().map(Product::getPART_NUMBER).collect(Collectors.toList());
+            List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive()
+                .stream().map(MachineCuringType::getMACHINECURINGTYPE_ID).collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("MAX CAPACITY DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            Sheet hiddenSheet1 = workbook.createSheet("HIDDEN_PRODUCTS");
+            for (int i = 0; i < productNames.size(); i++) {
+                Row row = hiddenSheet1.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(productNames.get(i).doubleValue());
+            }
+            
+            Sheet hiddenSheet2 = workbook.createSheet("HIDDEN_MACHINES");
+            for (int i = 0; i < machineCuringTypes.size(); i++) {
+                Row row = hiddenSheet2.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineCuringTypes.get(i));
+            }
+
+            Name namedRange1 = workbook.createName();
+            namedRange1.setNameName("ProductNames");
+            namedRange1.setRefersToFormula("HIDDEN_PRODUCTS!$A$1:$A$" + productNames.size());
+
+            Name namedRange2 = workbook.createName();
+            namedRange2.setNameName("MachineTypes");
+            namedRange2.setRefersToFormula("HIDDEN_MACHINES!$A$1:$A$" + machineCuringTypes.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet1), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet2), true);
+
+            int rowIndex = 1;
+            
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint productConstraint = validationHelper.createFormulaListConstraint("ProductNames");
+            CellRangeAddressList productAddressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation productValidation = validationHelper.createValidation(productConstraint, productAddressList);
+            productValidation.setSuppressDropDownArrow(true);
+            productValidation.setShowErrorBox(true);
+            sheet.addValidationData(productValidation);
+
+            DataValidationConstraint machineConstraint = validationHelper.createFormulaListConstraint("MachineTypes");
+            CellRangeAddressList machineAddressList = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation machineValidation = validationHelper.createValidation(machineConstraint, machineAddressList);
+            machineValidation.setSuppressDropDownArrow(true);
+            machineValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineValidation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Gagal mengekspor data Max Capacity");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
+
 
 
 }
