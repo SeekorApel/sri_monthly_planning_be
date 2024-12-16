@@ -464,7 +464,6 @@ public class CTCuringController {
 								ctCuring.setSTATUS(BigDecimal.valueOf(1));
 								ctCuring.setCREATION_DATE(new Date());
 								ctCuring.setLAST_UPDATE_DATE(new Date());
-								System.out.println("add");
 								ctCurings.add(ctCuring);
 							} else {
 								errorMessages.add("Data Tidak Valid, Data WIP pada Baris " + (i + 1) + " Tidak Ditemukan");

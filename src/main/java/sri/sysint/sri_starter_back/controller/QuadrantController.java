@@ -335,150 +335,37 @@ public class QuadrantController {
 	                            continue;
 	                        }
 
-	                       CT_Curing ctCuring = new CT_Curing();
-boolean hasError = false;
+	                        Quadrant quadrant = new Quadrant();
+	                        Cell buildingNameCell = row.getCell(2); 
+	                        Cell quadrantNameCell = row.getCell(3); 
 
-// Loop through columns to validate cells
-for (int col = 0; col <= 34; col++) {
-    Cell cell = row.getCell(col);
-    if (cell == null || cell.getCellType() == CellType.BLANK) {
-        errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom " + (col + 1));
-        hasError = true;
-    }
-}
+	                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name)");
+	                            continue;
+	                        }
 
-// Skip processing the row if there are errors
-if (hasError) {
-    continue;
-}
+	                        if (quadrantNameCell == null || quadrantNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Quadrant Name)");
+	                            continue;
+	                        }
 
-// Proceed with processing the row
-Cell wipCell = row.getCell(0);
-Cell groupCounterCell = row.getCell(1);
+	                        String buildingName = buildingNameCell.getStringCellValue();
 
-String wip = wipCell.getStringCellValue();
-Optional<CT_WIP> wipOpt = wipRepo.findByWIP(wip);
+	                        Optional<Building> buildingOpt = buildingRepo.findByName(buildingName);
 
-if (wipOpt.isPresent()) {
-    CT_WIP ctWip = wipOpt.get();
-    ctCuring.setCT_CURING_ID(ctCuringServiceImpl.getNewId());
-    ctCuring.setWIP(wip);
-    ctCuring.setGROUP_COUNTER(groupCounterCell.getStringCellValue());
+	                        if (buildingOpt.isPresent()) {
+	                            Building building = buildingOpt.get();
+	                            quadrant.setQUADRANT_ID(quadrantServiceImpl.getNewId());
+	                            quadrant.setBUILDING_ID(building.getBUILDING_ID()); 
+	                            quadrant.setQUADRANT_NAME(quadrantNameCell.getStringCellValue());
+	                            quadrant.setSTATUS(BigDecimal.valueOf(1));
+	                            quadrant.setCREATION_DATE(new Date());
+	                            quadrant.setLAST_UPDATE_DATE(new Date());
 
-    for (int col = 2; col <= 34; col++) {
-        Cell cell = row.getCell(col);
-        switch (col) {
-            case 2:
-                ctCuring.setVAR_GROUP_COUNTER(getStringFromCell(cell));
-                break;
-            case 3:
-                ctCuring.setSEQUENCE(getBigDecimalFromCell(cell));
-                break;
-            case 4:
-                ctCuring.setWCT(getStringFromCell(cell));
-                break;
-            case 5:
-                ctCuring.setOPERATION_SHORT_TEXT(getStringFromCell(cell));
-                break;
-            case 6:
-                ctCuring.setOPERATION_UNIT(getStringFromCell(cell));
-                break;
-            case 7:
-                ctCuring.setBASE_QUANTITY(getBigDecimalFromCell(cell));
-                break;
-            case 8:
-                ctCuring.setSTANDART_VALUE_UNIT(getStringFromCell(cell));
-                break;
-            case 9:
-                ctCuring.setCT_SEC1(getBigDecimalFromCell(cell));
-                break;
-            case 10:
-                ctCuring.setCT_HR1000(getBigDecimalFromCell(cell));
-                break;
-            case 11:
-                ctCuring.setWH_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
-                break;
-            case 12:
-                ctCuring.setWH_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
-                break;
-            case 13:
-                ctCuring.setWH_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
-                break;
-            case 14:
-                ctCuring.setWH_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 15:
-                ctCuring.setWH_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(cell));
-                break;
-            case 16:
-                ctCuring.setWH_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 17:
-                ctCuring.setALLOW_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
-                break;
-            case 18:
-                ctCuring.setALLOW_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
-                break;
-            case 19:
-                ctCuring.setALLOW_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
-                break;
-            case 20:
-                ctCuring.setALLOW_TOTAL(getBigDecimalFromCell(cell));
-                break;
-            case 21:
-                ctCuring.setOP_TIME_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
-                break;
-            case 22:
-                ctCuring.setOP_TIME_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
-                break;
-            case 23:
-                ctCuring.setOP_TIME_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
-                break;
-            case 24:
-                ctCuring.setOP_TIME_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 25:
-                ctCuring.setOP_TIME_NORMAL_SHIFT(getBigDecimalFromCell(cell));
-                break;
-            case 26:
-                ctCuring.setOP_TIME_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 27:
-                ctCuring.setKAPS_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
-                break;
-            case 28:
-                ctCuring.setKAPS_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
-                break;
-            case 29:
-                ctCuring.setKAPS_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
-                break;
-            case 30:
-                ctCuring.setKAPS_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 31:
-                ctCuring.setKAPS_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(cell));
-                break;
-            case 32:
-                ctCuring.setKAPS_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-            case 33:
-                ctCuring.setWAKTU_TOTAL_CT_NORMAL(getBigDecimalFromCell(cell));
-                break;
-            case 34:
-                ctCuring.setWAKTU_TOTAL_CT_FRIDAY(getBigDecimalFromCell(cell));
-                break;
-        }
-    }
-
-    ctCuring.setSTATUS(BigDecimal.valueOf(1));
-    ctCuring.setCREATION_DATE(new Date());
-    ctCuring.setLAST_UPDATE_DATE(new Date());
-
-    ctCurings.add(ctCuring);
-} else {
-    errorMessages.add("Data Tidak Valid, Data WIP pada Baris " + (i + 1) + " Tidak Ditemukan");
-}
-
+	                            quadrants.add(quadrant);
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Data Building pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        }
 	                    }
 	                }
 
