@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,8 +43,10 @@ import com.auth0.jwt.algorithms.Algorithm;
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuring;
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.repository.BuildingRepo;
+import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 import sri.sysint.sri_starter_back.service.MachineCuringServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -54,6 +57,8 @@ public class MachineCuringController {
 
 	@Autowired
 	private MachineCuringServiceImpl machineCuringServiceImpl;
+    @Autowired
+    private MachineCuringTypeRepo machineCuringTypeRepo;
     @Autowired
     private BuildingRepo buildingRepo;
 	@PersistenceContext	
@@ -287,6 +292,7 @@ public class MachineCuringController {
 		}
 		
 		@PostMapping("/saveMachineCuringExcel")
+		@Transactional
 		public Response saveMachineCuringExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 		    String header = req.getHeader("Authorization");
 
@@ -307,13 +313,12 @@ public class MachineCuringController {
 		                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 		            }
 
-		            machineCuringServiceImpl.deleteAllMachineCuring();
-
 		            try (InputStream inputStream = file.getInputStream()) {
 		                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 		                XSSFSheet sheet = workbook.getSheetAt(0);
 
 		                List<MachineCuring> machineCurings = new ArrayList<>();
+		                List<String> errorMessages = new ArrayList<>();
 
 		                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 		                    Row row = sheet.getRow(i);
@@ -333,66 +338,109 @@ public class MachineCuringController {
 		                            continue;
 		                        }
 
-		                        MachineCuring machineCuring = new MachineCuring();
 		                        Cell workCenterTextCell = row.getCell(1);
-		                        Cell buildingNameCell = row.getCell(2); // BUILDING_NAME, not ID
-		                        Cell machinetype = row.getCell(4);
+		                        Cell buildingNameCell = row.getCell(2);
 		                        Cell cavityCell = row.getCell(3);
+		                        Cell machinetype = row.getCell(4);
 		                        Cell statususage = row.getCell(5);
 
-		                        if (buildingNameCell != null && buildingNameCell.getCellType() == CellType.STRING
-		                                && cavityCell != null && cavityCell.getCellType() == CellType.NUMERIC
-		                                && statususage != null && statususage.getCellType() == CellType.NUMERIC
-		                                && workCenterTextCell != null && machinetype != null) {
-
-		                            String buildingName = buildingNameCell.getStringCellValue();
-
-		                            // Find BUILDING_ID by BUILDING_NAME
-		                            Optional<Building> buildingOptional = buildingRepo.findByName(buildingName);
-		                            if (buildingOptional.isEmpty()) {
-		                                continue;
-		                            }
-
-		                            BigDecimal buildingId = buildingOptional.get().getBUILDING_ID();
-
-		                            machineCuring.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
-		                            machineCuring.setBUILDING_ID(buildingId); // Use BUILDING_ID from query
-		                            machineCuring.setMACHINE_TYPE(machinetype.getStringCellValue());
-		                            machineCuring.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
-		                            machineCuring.setSTATUS_USAGE(BigDecimal.valueOf(statususage.getNumericCellValue()));
-		                            machineCuring.setSTATUS(BigDecimal.valueOf(1));
-		                            machineCuring.setCREATION_DATE(new Date());
-		                            machineCuring.setLAST_UPDATE_DATE(new Date());
-
-		                            machineCuringServiceImpl.saveMachineCuring(machineCuring);
-		                            machineCurings.add(machineCuring);
-		                        } else {
+		                        if (workCenterTextCell == null || workCenterTextCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 2 (Work Center Text)");
 		                            continue;
 		                        }
+
+		                        if (buildingNameCell == null || buildingNameCell.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Building Name)");
+		                            continue;
+		                        }
+
+		                        if (cavityCell == null || cavityCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Bukan Numerik pada Baris " + (i + 1) + " Kolom 4 (Cavity)");
+		                            continue;
+		                        }
+
+		                        if (machinetype == null || machinetype.getCellType() == CellType.BLANK) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Machine Type)");
+		                            continue;
+		                        }
+
+		                        if (statususage == null || statususage.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Bukan Numerik pada Baris " + (i + 1) + " Kolom 6 (Status Usage)");
+		                            continue;
+		                        }
+
+		                        String buildingName = buildingNameCell.getStringCellValue();
+		                        Optional<Building> buildingOptional = buildingRepo.findByName(buildingName);
+
+		                        if (buildingOptional.isEmpty()) {
+		                            errorMessages.add("Data Tidak Valid, Building Name pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                            continue;
+		                        }
+
+		                        String machineTypeValue = machinetype.getStringCellValue();
+		                        Optional<MachineCuringType> productTypeOptional = machineCuringTypeRepo.findById(machineTypeValue);
+
+		                        if (productTypeOptional.isEmpty()) {
+		                            errorMessages.add("Data Tidak Valid, Machine Type pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                            continue;
+		                        }
+
+		                        MachineCuring machineCuring = new MachineCuring();
+
+		                        machineCuring.setWORK_CENTER_TEXT(workCenterTextCell.getStringCellValue());
+		                        machineCuring.setBUILDING_ID(buildingOptional.get().getBUILDING_ID());
+		                        machineCuring.setMACHINE_TYPE(machineTypeValue);
+		                        machineCuring.setCAVITY(BigDecimal.valueOf(cavityCell.getNumericCellValue()));
+		                        machineCuring.setSTATUS_USAGE(BigDecimal.valueOf(statususage.getNumericCellValue()));
+		                        machineCuring.setSTATUS(BigDecimal.valueOf(1));
+		                        machineCuring.setCREATION_DATE(new Date());
+		                        machineCuring.setLAST_UPDATE_DATE(new Date());
+
+		                        machineCurings.add(machineCuring);
 		                    }
 		                }
 
-		                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineCurings);
+		                if (!errorMessages.isEmpty()) {
+		                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+		                }
 
+		                machineCuringServiceImpl.deleteAllMachineCuring();
+		                for (MachineCuring machineCuring : machineCurings) {
+		                    machineCuringServiceImpl.saveMachineCuring(machineCuring);
+		                }
+
+		                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), machineCurings);
 		            } catch (IOException e) {
-		                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+		                throw new RuntimeException("Error processing file", e);
 		            }
 		        } else {
 		            throw new ResourceNotFoundException("User not found");
 		        }
+		    } catch (IllegalArgumentException e) {
+		        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 		    } catch (Exception e) {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
-
-		    return response;
 		}
-
 		
 	    @RequestMapping("/exportMachineCuringExcel")
 	    public ResponseEntity<InputStreamResource> exportMachineCuringExcel() throws IOException {
 	        String filename = "MASTER_MACHINE_CURING.xlsx";
 
 	        ByteArrayInputStream data = machineCuringServiceImpl.exportMachineCuringsExcel(); 
+	        InputStreamResource file = new InputStreamResource(data); 
+
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+	                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) 
+	                .body(file); 
+	    }
+	    
+	    @RequestMapping("/layoutMachineCuringExcel")
+	    public ResponseEntity<InputStreamResource> layoutMachineCuringExcel() throws IOException {
+	        String filename = "LAYOUT_MACHINE_CURING.xlsx";
+
+	        ByteArrayInputStream data = machineCuringServiceImpl.layoutMachineCuringsExcel(); 
 	        InputStreamResource file = new InputStreamResource(data); 
 
 	        return ResponseEntity.ok()

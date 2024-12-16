@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,8 +41,10 @@ import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.CuringSize;
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 import sri.sysint.sri_starter_back.service.CuringSizeServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -49,7 +52,8 @@ import sri.sysint.sri_starter_back.service.CuringSizeServiceImpl;
 public class CuringSizeController {
 
 	private Response response;	
-
+	@Autowired
+    private MachineCuringTypeRepo machineCuringTypeRepo;
 	@Autowired
 	private CuringSizeServiceImpl curingSizeServiceImpl;
 	
@@ -282,8 +286,9 @@ public class CuringSizeController {
 	}
 	
 	@PostMapping("/saveCuringSizeExcel")
+	@Transactional
 	public Response saveCuringSizeExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-		String header = req.getHeader("Authorization");
+	    String header = req.getHeader("Authorization");
 
 	    if (header == null || !header.startsWith("Bearer ")) {
 	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
@@ -298,23 +303,21 @@ public class CuringSizeController {
 	            .getSubject();
 
 	        if (user != null) {
-	        	if (file.isEmpty()) {
-	    	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
-	    	    }
-	    	    
-	    	    curingSizeServiceImpl.deleteAllCuringSize();
+	            if (file.isEmpty()) {
+	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+	            }
 
-	    	    try (InputStream inputStream = file.getInputStream()) {
-	    	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-	    	        XSSFSheet sheet = workbook.getSheetAt(0);
-	    	        
-	    	        List<CuringSize> curingSizes = new ArrayList<>();
+	            try (InputStream inputStream = file.getInputStream()) {
+	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+	                XSSFSheet sheet = workbook.getSheetAt(0);
 
-	    	        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+	                List<CuringSize> curingSizes = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
+
+	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
 
 	                    if (row != null) {
-	                        // Check if the row is empty (ignoring borders)
 	                        boolean isEmptyRow = true;
 
 	                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -326,51 +329,104 @@ public class CuringSizeController {
 	                        }
 
 	                        if (isEmptyRow) {
-	                            continue; // Skip the row if it's empty
+	                            continue;
 	                        }
 
 	                        CuringSize curingSize = new CuringSize();
-
 	                        Cell machineCuringTypeIdCell = row.getCell(2);
 	                        Cell sizeIdCell = row.getCell(3);
 	                        Cell capacityCell = row.getCell(4);
 
-	                        if (machineCuringTypeIdCell != null && sizeIdCell != null && capacityCell != null) {
-	                        	curingSize.setCURINGSIZE_ID(curingSizeServiceImpl.getNewId());
-	                        	curingSize.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
-	    	                	curingSize.setSIZE_ID(sizeIdCell.getStringCellValue());
-	    	                	curingSize.setCAPACITY(BigDecimal.valueOf(capacityCell.getNumericCellValue()));
-	    	                	curingSize.setSTATUS(BigDecimal.valueOf(1));
-	    	                	curingSize.setCREATION_DATE(new Date());
-	    	                	curingSize.setLAST_UPDATE_DATE(new Date());
+	                        if (machineCuringTypeIdCell == null || machineCuringTypeIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Machine Curing Type ID)");
+	                            continue;
 	                        }
 
-	                        curingSizeServiceImpl.saveCuringSize(curingSize);
-	    	                curingSizes.add(curingSize);
+	                        if (sizeIdCell == null || sizeIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Size ID)");
+	                            continue;
+	                        }
+
+	                        if (capacityCell == null || capacityCell.getCellType() == CellType.BLANK ) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Capacity)");
+	                            continue;
+	                        }
+	                        
+	                        if (capacityCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Tipe Data Salah pada Baris " + (i + 1) + " Kolom 5 (Capacity)");
+	                            continue;
+	                        }
+	                        
+	                        Optional<MachineCuringType> machineCuringTypeOpt = machineCuringTypeRepo.findById(machineCuringTypeIdCell.getStringCellValue());
+
+	                        if (machineCuringTypeOpt.isPresent()) {
+	                        	curingSize.setCURINGSIZE_ID(curingSizeServiceImpl.getNewId());
+		                        curingSize.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
+		                        
+		                        if (sizeIdCell != null) {
+		                            if (sizeIdCell.getCellType() == CellType.STRING) {
+		                                curingSize.setSIZE_ID(sizeIdCell.getStringCellValue());
+		                            } else if (sizeIdCell.getCellType() == CellType.NUMERIC) {
+		                                curingSize.setSIZE_ID(String.valueOf(sizeIdCell.getNumericCellValue()));
+		                            }
+		                        }
+		                        
+		                        curingSize.setCAPACITY(BigDecimal.valueOf(capacityCell.getNumericCellValue()));
+		                        curingSize.setSTATUS(BigDecimal.valueOf(1));
+		                        curingSize.setCREATION_DATE(new Date());
+		                        curingSize.setLAST_UPDATE_DATE(new Date());
+
+		                        curingSizes.add(curingSize);
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Data Machine Curing Type pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        }
+
 	                    }
 	                }
 
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
 
-	    	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), curingSizes);
+	                curingSizeServiceImpl.deleteAllCuringSize();
+	                for (CuringSize curingSize : curingSizes) {
+	                    curingSizeServiceImpl.saveCuringSize(curingSize);
+	                }
 
-	    	    } catch (IOException e) {
-	    	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
-	    	    }
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), curingSizes);
+
+	            } catch (IOException e) {
+	                throw new RuntimeException("Error processing file", e);
+	            }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
+
 	
     @GetMapping("/exportCuringSizeexcel")
     public ResponseEntity<InputStreamResource> exportCuringSizesExcel() throws IOException {
-        String filename = "MASTER_CURING_SIZE.xlsx";
+        String filename = "EXPORT_MASTER_CURING_SIZE.xlsx";
 
         ByteArrayInputStream data = curingSizeServiceImpl.exportCuringSizesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+    
+    @GetMapping("/layoutCuringSizeexcel")
+    public ResponseEntity<InputStreamResource> layoutCuringSizeexcel() throws IOException {
+        String filename = "LAYOUT_MASTER_CURING_SIZE.xlsx";
+
+        ByteArrayInputStream data = curingSizeServiceImpl.layoutCuringSizesExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()

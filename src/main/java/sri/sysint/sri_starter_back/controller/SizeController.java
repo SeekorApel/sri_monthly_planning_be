@@ -61,8 +61,7 @@ public class SizeController {
 	
 	@PersistenceContext	
 	private EntityManager em;
-	
-//START - GET MAPPING
+
 	@GetMapping("/getAllSize")
 	public Response getAllSize(final HttpServletRequest req) throws ResourceNotFoundException {
 	    String header = req.getHeader("Authorization");
