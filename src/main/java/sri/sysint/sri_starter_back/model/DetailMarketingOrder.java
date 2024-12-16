@@ -88,6 +88,15 @@ public class DetailMarketingOrder {
 	@Column(name = "LOCK_STATUS_MONTH_2")
 	private BigDecimal lockStatusM2;
 	
+	@Column(name = "AR")
+	private BigDecimal ar;
+	
+	@Column(name = "DEFECT")
+	private BigDecimal defect;
+	
+	@Column(name = "REJECT")
+	private BigDecimal reject;
+	
 	@Column(name = "STATUS")
 	private BigDecimal status;
 	
@@ -129,6 +138,9 @@ public class DetailMarketingOrder {
 	    this.lockStatusM0 = detailMarketingOrder.getLockStatusM0();
 	    this.lockStatusM1 = detailMarketingOrder.getLockStatusM1();
 	    this.lockStatusM2 = detailMarketingOrder.getLockStatusM2();
+	    this.ar = detailMarketingOrder.getAr();
+	    this.defect = detailMarketingOrder.getDefect();
+	    this.reject = detailMarketingOrder.getReject();
 	    this.status = detailMarketingOrder.getStatus();
 	    this.creationDate = detailMarketingOrder.getCreationDate();
 	    this.createdBy = detailMarketingOrder.getCreatedBy();
@@ -137,7 +149,6 @@ public class DetailMarketingOrder {
 	}
 
 	public DetailMarketingOrder() {}
-	
 
 	public BigDecimal getDetailId() {
 		return detailId;
@@ -340,6 +351,30 @@ public class DetailMarketingOrder {
 	public void setLockStatusM2(BigDecimal lockStatusM2) {
 		this.lockStatusM2 = lockStatusM2;
 	}
+	
+	public BigDecimal getAr() {
+		return ar;
+	}
+
+	public void setAr(BigDecimal ar) {
+		this.ar = ar;
+	}
+
+	public BigDecimal getDefect() {
+		return defect;
+	}
+
+	public void setDefect(BigDecimal defect) {
+		this.defect = defect;
+	}
+
+	public BigDecimal getReject() {
+		return reject;
+	}
+
+	public void setReject(BigDecimal reject) {
+		this.reject = reject;
+	}
 
 	public BigDecimal getStatus() {
 		return status;
@@ -380,6 +415,16 @@ public class DetailMarketingOrder {
 	public void setLastUpdatedBy(String lastUpdatedBy) {
 		this.lastUpdatedBy = lastUpdatedBy;
 	}
+
+	@Override
+	public String toString() {
+		return "DetailMarketingOrder [moId=" + moId + ", partNumber=" + partNumber + ", description=" + description
+				+ ", moMonth0=" + moMonth0 + ", ppd=" + ppd + ", cav=" + cav + ", lockStatusM0=" + lockStatusM0
+				+ ", lockStatusM1=" + lockStatusM1 + ", lockStatusM2=" + lockStatusM2 + ", ar=" + ar + ", defect="
+				+ defect + ", reject=" + reject + "]";
+	}
+	
+	
 
 	
 }
