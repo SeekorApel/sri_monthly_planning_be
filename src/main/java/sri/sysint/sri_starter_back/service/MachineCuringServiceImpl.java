@@ -9,25 +9,32 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
-import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuring;
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.repository.BuildingRepo;
+import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
 
 
@@ -36,7 +43,8 @@ import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
 public class MachineCuringServiceImpl {
     @Autowired
     private MachineCuringRepo machineCuringRepo;
-    
+    @Autowired
+    private MachineCuringTypeRepo machineCuringTypeRepo;
     @Autowired
     private BuildingRepo buildingRepo;
 
@@ -158,8 +166,17 @@ public class MachineCuringServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
-            Sheet sheet = workbook.createSheet("MACHINE CURING DATA");
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
 
+            List<MachineCuringType> activeMachineTypes = machineCuringTypeRepo.findMachineCuringTypeActive();
+            List<String> machineTypes = activeMachineTypes.stream()
+                .map(MachineCuringType::getMACHINECURINGTYPE_ID)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("MACHINE CURING DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
@@ -172,12 +189,14 @@ public class MachineCuringServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
             for (int i = 0; i < header.length; i++) {
                 sheet.setColumnWidth(i, 20 * 256);
@@ -190,6 +209,31 @@ public class MachineCuringServiceImpl {
                 cell.setCellStyle(headerStyle);
             }
 
+            Sheet hiddenBuildingSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenBuildingSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name buildingRange = workbook.createName();
+            buildingRange.setNameName("BuildingNames");
+            buildingRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            Sheet hiddenMachineTypeSheet = workbook.createSheet("HIDDEN_MACHINE_TYPES");
+            for (int i = 0; i < machineTypes.size(); i++) {
+                Row row = hiddenMachineTypeSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineTypes.get(i));
+            }
+
+            Name machineTypeRange = workbook.createName();
+            machineTypeRange.setNameName("MachineTypes");
+            machineTypeRange.setRefersToFormula("HIDDEN_MACHINE_TYPES!$A$1:$A$" + machineTypes.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenBuildingSheet), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenMachineTypeSheet), true);
+
             int rowIndex = 1;
             int nomor = 1;
             for (MachineCuring mc : machineCurings) {
@@ -199,37 +243,45 @@ public class MachineCuringServiceImpl {
                 nomorCell.setCellValue(nomor++);
                 nomorCell.setCellStyle(borderStyle);
 
-                Cell workcentertextcell = dataRow.createCell(1);
-                workcentertextcell.setCellValue(mc.getWORK_CENTER_TEXT());
-                workcentertextcell.setCellStyle(borderStyle);
-                
-                String buildingName = "";
-                if (mc.getBUILDING_ID() != null) {
-                    Optional<Building> buildingOpt = buildingRepo.findById(mc.getBUILDING_ID());
-                    if (buildingOpt.isPresent()) {
-                        buildingName = buildingOpt.get().getBUILDING_NAME();
-                    } else {
-                        buildingName = "Unknown";  
-                    }
-                }
+                Cell workcentertextCell = dataRow.createCell(1);
+                workcentertextCell.setCellValue(mc.getWORK_CENTER_TEXT());
+                workcentertextCell.setCellStyle(borderStyle);
 
-                // Ganti BUILDING_ID dengan BUILDING_NAME
                 Cell buildingNameCell = dataRow.createCell(2);
-                buildingNameCell.setCellValue(buildingName);
+                buildingNameCell.setCellValue("");
                 buildingNameCell.setCellStyle(borderStyle);
 
                 Cell cavityCell = dataRow.createCell(3);
                 cavityCell.setCellValue(mc.getCAVITY().doubleValue());
                 cavityCell.setCellStyle(borderStyle);
 
-                Cell machinetypecell = dataRow.createCell(4);
-                machinetypecell.setCellValue(mc.getMACHINE_TYPE());
-                machinetypecell.setCellStyle(borderStyle);
-                
+                Cell machineTypeCell = dataRow.createCell(4);
+                machineTypeCell.setCellValue("");
+                machineTypeCell.setCellStyle(borderStyle);
+
                 Cell statusUsageCell = dataRow.createCell(5);
                 statusUsageCell.setCellValue(mc.getSTATUS_USAGE() != null ? mc.getSTATUS_USAGE().doubleValue() : 0.0);
                 statusUsageCell.setCellStyle(borderStyle);
+            }
 
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint buildingConstraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList buildingAddressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation buildingValidation = validationHelper.createValidation(buildingConstraint, buildingAddressList);
+            buildingValidation.setSuppressDropDownArrow(true);
+            buildingValidation.setShowErrorBox(true);
+            sheet.addValidationData(buildingValidation);
+
+            DataValidationConstraint machineTypeConstraint = validationHelper.createFormulaListConstraint("MachineTypes");
+            CellRangeAddressList machineTypeAddressList = new CellRangeAddressList(1, 1000, 4, 4);
+            DataValidation machineTypeValidation = validationHelper.createValidation(machineTypeConstraint, machineTypeAddressList);
+            machineTypeValidation.setSuppressDropDownArrow(true);
+            machineTypeValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineTypeValidation);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
             }
             
             workbook.write(out);
@@ -242,5 +294,133 @@ public class MachineCuringServiceImpl {
             out.close();
         }
     }
+
+    public ByteArrayInputStream layoutMachineCuringsExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
     
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",
+            "WORK_CENTER_TEXT",
+            "BUILDING_NAME",
+            "CAVITY",
+            "MACHINE_TYPE",
+            "STATUS_USAGE"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<Building> activeBuildings = buildingRepo.findBuildingActive();
+            List<String> buildingNames = activeBuildings.stream()
+                .map(Building::getBUILDING_NAME)
+                .collect(Collectors.toList());
+
+            List<MachineCuringType> activeMachineTypes = machineCuringTypeRepo.findMachineCuringTypeActive();
+            List<String> machineTypes = activeMachineTypes.stream()
+                .map(MachineCuringType::getMACHINECURINGTYPE_ID)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("MACHINE CURING DATA");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            Sheet hiddenBuildingSheet = workbook.createSheet("HIDDEN_BUILDINGS");
+            for (int i = 0; i < buildingNames.size(); i++) {
+                Row row = hiddenBuildingSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(buildingNames.get(i));
+            }
+
+            Name buildingRange = workbook.createName();
+            buildingRange.setNameName("BuildingNames");
+            buildingRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+
+            Sheet hiddenMachineTypeSheet = workbook.createSheet("HIDDEN_MACHINE_TYPES");
+            for (int i = 0; i < machineTypes.size(); i++) {
+                Row row = hiddenMachineTypeSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineTypes.get(i));
+            }
+
+            Name machineTypeRange = workbook.createName();
+            machineTypeRange.setNameName("MachineTypes");
+            machineTypeRange.setRefersToFormula("HIDDEN_MACHINE_TYPES!$A$1:$A$" + machineTypes.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenBuildingSheet), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenMachineTypeSheet), true);
+
+            int rowIndex = 1;
+            int nomor = 1;
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint buildingConstraint = validationHelper.createFormulaListConstraint("BuildingNames");
+            CellRangeAddressList buildingAddressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation buildingValidation = validationHelper.createValidation(buildingConstraint, buildingAddressList);
+            buildingValidation.setSuppressDropDownArrow(true);
+            buildingValidation.setShowErrorBox(true);
+            sheet.addValidationData(buildingValidation);
+
+            DataValidationConstraint machineTypeConstraint = validationHelper.createFormulaListConstraint("MachineTypes");
+            CellRangeAddressList machineTypeAddressList = new CellRangeAddressList(1, 1000, 4, 4);
+            DataValidation machineTypeValidation = validationHelper.createValidation(machineTypeConstraint, machineTypeAddressList);
+            machineTypeValidation.setSuppressDropDownArrow(true);
+            machineTypeValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineTypeValidation);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Failed to export MachineCuring data", e);
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 }
