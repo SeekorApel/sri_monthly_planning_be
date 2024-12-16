@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,9 +41,13 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.MaxCapacity;
 import sri.sysint.sri_starter_back.model.Plant;
+import sri.sysint.sri_starter_back.model.Product;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
+import sri.sysint.sri_starter_back.repository.ProductRepo;
 import sri.sysint.sri_starter_back.service.MaxCapacityServiceImpl;
 import sri.sysint.sri_starter_back.service.PlantServiceImpl;
 
@@ -54,7 +59,10 @@ public class MaxCapacityController {
 
 	@Autowired
 	private MaxCapacityServiceImpl maxCapacityServiceImpl;
-	
+	@Autowired
+	private ProductRepo productRepo;
+	@Autowired
+	private MachineCuringTypeRepo machineCuringTypeRepo;
 	@PersistenceContext	
 	private EntityManager em;
 
@@ -286,6 +294,7 @@ public class MaxCapacityController {
 
 		
 		@PostMapping("/saveMaxCapacitiesExcel")
+		@Transactional
 		public Response saveMaxCapacitiesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 		    String header = req.getHeader("Authorization");
 
@@ -306,19 +315,17 @@ public class MaxCapacityController {
 		                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 		            }
 
-		            maxCapacityServiceImpl.deleteAllMaxCapacity();
-
 		            try (InputStream inputStream = file.getInputStream()) {
 		                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 		                XSSFSheet sheet = workbook.getSheetAt(0);
 
 		                List<MaxCapacity> maxCapacities = new ArrayList<>();
+		                List<String> errorMessages = new ArrayList<>();
 
 		                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 		                    Row row = sheet.getRow(i);
 
 		                    if (row != null) {
-
 		                        boolean isEmptyRow = true;
 
 		                        for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -334,7 +341,6 @@ public class MaxCapacityController {
 		                        }
 
 		                        MaxCapacity maxCapacity = new MaxCapacity();
-
 		                        Cell productIdCell = row.getCell(2);
 		                        Cell machineCurringTypeIDCell = row.getCell(3);
 		                        Cell cycleTimeCell = row.getCell(4);
@@ -342,52 +348,106 @@ public class MaxCapacityController {
 		                        Cell capacityShift2Cell = row.getCell(6);
 		                        Cell capacityShift3Cell = row.getCell(7);
 
-		                        if (productIdCell != null && productIdCell.getCellType() == CellType.NUMERIC
-		                                && machineCurringTypeIDCell != null 
-		                                && cycleTimeCell != null && cycleTimeCell.getCellType() == CellType.NUMERIC
-		                                && capacityShift1Cell != null && capacityShift1Cell.getCellType() == CellType.NUMERIC
-		                                && capacityShift2Cell != null && capacityShift2Cell.getCellType() == CellType.NUMERIC
-		                                && capacityShift3Cell != null && capacityShift3Cell.getCellType() == CellType.NUMERIC) {
-
-		                            maxCapacity.setMAX_CAP_ID(maxCapacityServiceImpl.getNewId());
-		                            maxCapacity.setMACHINECURINGTYPE_ID(machineCurringTypeIDCell.getStringCellValue());
-		                            maxCapacity.setPRODUCT_ID(BigDecimal.valueOf(productIdCell.getNumericCellValue()));
-		                            maxCapacity.setCYCLE_TIME(BigDecimal.valueOf(cycleTimeCell.getNumericCellValue()));
-		                            maxCapacity.setCAPACITY_SHIFT_1(BigDecimal.valueOf(capacityShift1Cell.getNumericCellValue()));
-		                            maxCapacity.setCAPACITY_SHIFT_2(BigDecimal.valueOf(capacityShift2Cell.getNumericCellValue()));
-		                            maxCapacity.setCAPACITY_SHIFT_3(BigDecimal.valueOf(capacityShift3Cell.getNumericCellValue()));
-		                            maxCapacity.setSTATUS(BigDecimal.valueOf(1));
-		                            maxCapacity.setCREATION_DATE(new Date());
-		                            maxCapacity.setLAST_UPDATE_DATE(new Date());
-
-		                            maxCapacityServiceImpl.saveMaxCapacity(maxCapacity);
-		                            maxCapacities.add(maxCapacity);
-		                        } else {
+		                        if (productIdCell == null || productIdCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 3 (Product ID)");
 		                            continue;
 		                        }
+
+		                        if (machineCurringTypeIDCell == null || machineCurringTypeIDCell.getCellType() != CellType.STRING) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 4 (Machine Curring Type ID)");
+		                            continue;
+		                        }
+
+		                        if (cycleTimeCell == null || cycleTimeCell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 5 (Cycle Time)");
+		                            continue;
+		                        }
+
+		                        if (capacityShift1Cell == null || capacityShift1Cell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 6 (Capacity Shift 1)");
+		                            continue;
+		                        }
+
+		                        if (capacityShift2Cell == null || capacityShift2Cell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 7 (Capacity Shift 2)");
+		                            continue;
+		                        }
+
+		                        if (capacityShift3Cell == null || capacityShift3Cell.getCellType() != CellType.NUMERIC) {
+		                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 8 (Capacity Shift 3)");
+		                            continue;
+		                        }
+
+		                        Optional<Product> productOpt = productRepo.findById(BigDecimal.valueOf(productIdCell.getNumericCellValue()));
+		                        Optional<MachineCuringType> machineCuringTypeOpt = machineCuringTypeRepo.findById(machineCurringTypeIDCell.getStringCellValue());
+
+		                        if (productOpt.isEmpty()) {
+		                            errorMessages.add("Data Tidak Valid, Data Product pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                            continue;
+		                        }
+
+		                        if (machineCuringTypeOpt.isEmpty()) {
+		                            errorMessages.add("Data Tidak Valid, Data Machine Curring Type pada Baris " + (i + 1) + " Tidak Ditemukan");
+		                            continue;
+		                        }
+
+		                        maxCapacity.setMAX_CAP_ID(maxCapacityServiceImpl.getNewId());
+		                        maxCapacity.setPRODUCT_ID(BigDecimal.valueOf(productIdCell.getNumericCellValue()));
+		                        maxCapacity.setMACHINECURINGTYPE_ID(machineCurringTypeIDCell.getStringCellValue());
+		                        maxCapacity.setCYCLE_TIME(BigDecimal.valueOf(cycleTimeCell.getNumericCellValue()));
+		                        maxCapacity.setCAPACITY_SHIFT_1(BigDecimal.valueOf(capacityShift1Cell.getNumericCellValue()));
+		                        maxCapacity.setCAPACITY_SHIFT_2(BigDecimal.valueOf(capacityShift2Cell.getNumericCellValue()));
+		                        maxCapacity.setCAPACITY_SHIFT_3(BigDecimal.valueOf(capacityShift3Cell.getNumericCellValue()));
+		                        maxCapacity.setSTATUS(BigDecimal.valueOf(1));
+		                        maxCapacity.setCREATION_DATE(new Date());
+		                        maxCapacity.setLAST_UPDATE_DATE(new Date());
+
+		                        maxCapacities.add(maxCapacity);
 		                    }
 		                }
 
-		                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), maxCapacities);
+		                if (!errorMessages.isEmpty()) {
+		                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+		                }
+
+		                maxCapacityServiceImpl.deleteAllMaxCapacity();
+		                for (MaxCapacity maxCapacity : maxCapacities) {
+		                    maxCapacityServiceImpl.saveMaxCapacity(maxCapacity);
+		                }
+
+		                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), maxCapacities);
 
 		            } catch (IOException e) {
-		                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+		                throw new RuntimeException("Error processing file", e);
 		            }
 		        } else {
 		            throw new ResourceNotFoundException("User not found");
 		        }
+		    } catch (IllegalArgumentException e) {
+		        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 		    } catch (Exception e) {
 		        throw new ResourceNotFoundException("JWT token is not valid or expired");
 		    }
-
-		    return response;
 		}
 		
 	    @RequestMapping("/exportMaxCapacityExcel")
 	    public ResponseEntity<InputStreamResource> exportMaxCapacityExcel() throws IOException {
-	        String filename = "MASTER_MAX_CAPACITY.xlsx"; 
+	        String filename = "EXPORT_MASTER_MAX_CAPACITY.xlsx"; 
 
 	        ByteArrayInputStream data = maxCapacityServiceImpl.exportMaxCapacitysExcel(); 
+	        InputStreamResource file = new InputStreamResource(data);
+
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename) 
+	                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) 
+	                .body(file); 
+	    }
+	    
+	    @RequestMapping("/layoutMaxCapacityExcel")
+	    public ResponseEntity<InputStreamResource> layoutMaxCapacityExcel() throws IOException {
+	        String filename = "LAYOUT_MASTER_MAX_CAPACITY.xlsx"; 
+
+	        ByteArrayInputStream data = maxCapacityServiceImpl.layoutMaxCapacitysExcel(); 
 	        InputStreamResource file = new InputStreamResource(data);
 
 	        return ResponseEntity.ok()
