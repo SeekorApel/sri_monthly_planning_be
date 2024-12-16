@@ -211,6 +211,32 @@ public class ProductServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+                        List<ItemCuring> activeItemCurings = itemCuringRepo.findItemCuringActive();
+            List<Pattern> activePatterns = patternRepo.findPatternActive();
+            List<Size> activeSizes = sizeRepo.findSizeActive();
+            List<ProductType> activeProductTypes = productTypeRepo.findProductTypeActive();
+            List<ItemAssy> activeItemAssys = itemAssyRepo.findItemAssyActive();
+
+            List<String> itemCuringID = activeItemCurings.stream()
+                .map(ItemCuring::getITEM_CURING)
+                .collect(Collectors.toList());
+
+            List<String> patternName = activePatterns.stream()
+                .map(Pattern::getPATTERN_NAME)
+                .collect(Collectors.toList());
+
+            List<String> sizeID = activeSizes.stream()
+                .map(Size::getSIZE_ID)
+                .collect(Collectors.toList());
+
+            List<String> productTypeCategory = activeProductTypes.stream()
+                .map(ProductType::getCATEGORY)
+                .collect(Collectors.toList());
+
+            List<String> itemAssyID = activeItemAssys.stream()
+                .map(ItemAssy::getITEM_ASSY)
+                .collect(Collectors.toList());
+
             Sheet sheet = workbook.createSheet("PRODUCT DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -241,6 +267,70 @@ public class ProductServiceImpl {
                 cell.setCellValue(header[i]);
                 cell.setCellStyle(headerStyle);
             }
+             Sheet hiddenSheetCuring = workbook.createSheet("HIDDEN_ITEMCURINGS");
+            for (int i = 0; i < itemCuringID.size(); i++) {
+                Row row = hiddenSheetCuring.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(itemCuringID.get(i));
+            }
+
+            Name namedRangeCuring = workbook.createName();
+            namedRangeCuring.setNameName("ItemCuringID");
+            namedRangeCuring.setRefersToFormula("HIDDEN_ITEMCURINGS!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetCuring), true);
+
+            Sheet hiddenSheetPattern = workbook.createSheet("HIDDEN_PATTERNS");
+            for (int i = 0; i < patternName.size(); i++) {
+                Row row = hiddenSheetPattern.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(patternName.get(i));
+            }
+
+            Name namedRangePattern = workbook.createName();
+            namedRangePattern.setNameName("patternName");
+            namedRangePattern.setRefersToFormula("HIDDEN_PATTERNS!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetPattern), true);
+
+            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizeID.size(); i++) {
+                Row row = hiddenSheetSize.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(sizeID.get(i));
+            }
+
+            Name namedRangeSize = workbook.createName();
+            namedRangeSize.setNameName("sizeID");
+            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
+
+            Sheet hiddenSheetProductType = workbook.createSheet("HIDDEN_PRODUCTTYPES");
+            for (int i = 0; i < productTypeCategory.size(); i++) {
+                Row row = hiddenSheetProductType.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(productTypeCategory.get(i));
+            }
+
+            Name namedRangeProductType = workbook.createName();
+            namedRangeProductType.setNameName("productTypeCategory");
+            namedRangeProductType.setRefersToFormula("HIDDEN_PRODUCTTYPES!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetProductType), true);
+
+            Sheet hiddenSheetAssy = workbook.createSheet("HIDDEN_ITEMASSYS");
+            for (int i = 0; i < itemAssyID.size(); i++) {
+                Row row = hiddenSheetAssy.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(itemAssyID.get(i));
+            }
+
+            Name namedRangeAssy = workbook.createName();
+            namedRangeAssy.setNameName("ItemAssyID");
+            namedRangeAssy.setRefersToFormula("HIDDEN_ITEMASSYS!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetAssy), true);
 
             int rowIndex = 1;
             for (Product p : products) {
@@ -328,6 +418,46 @@ public class ProductServiceImpl {
                 lowerConstantCell.setCellStyle(borderStyle);
             }
 
+                        DataValidationHelper validationHelper1 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint1 = validationHelper1.createFormulaListConstraint("ItemCuringID");
+            CellRangeAddressList addressList1 = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation1 = validationHelper1.createValidation(constraint1, addressList1);
+            validation1.setSuppressDropDownArrow(true);
+            validation1.setShowErrorBox(true);
+            sheet.addValidationData(validation1);
+
+            DataValidationHelper validationHelper2 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint2 = validationHelper2.createFormulaListConstraint("patternName");
+            CellRangeAddressList addressList2 = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validation2 = validationHelper2.createValidation(constraint2, addressList2);
+            validation2.setSuppressDropDownArrow(true);
+            validation2.setShowErrorBox(true);
+            sheet.addValidationData(validation2);
+
+            DataValidationHelper validationHelper3 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint3 = validationHelper3.createFormulaListConstraint("sizeID");
+            CellRangeAddressList addressList3 = new CellRangeAddressList(1, 1000, 4, 4);
+            DataValidation validation3 = validationHelper3.createValidation(constraint3, addressList3);
+            validation3.setSuppressDropDownArrow(true);
+            validation3.setShowErrorBox(true);
+            sheet.addValidationData(validation3);
+
+            DataValidationHelper validationHelper4 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint4 = validationHelper4.createFormulaListConstraint("productTypeCategory");
+            CellRangeAddressList addressList4 = new CellRangeAddressList(1, 1000, 5, 5);
+            DataValidation validation4 = validationHelper4.createValidation(constraint4, addressList4);
+            validation4.setSuppressDropDownArrow(true);
+            validation4.setShowErrorBox(true);
+            sheet.addValidationData(validation4);
+
+            DataValidationHelper validationHelper5 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint5 = validationHelper5.createFormulaListConstraint("itemAssyID");
+            CellRangeAddressList addressList5 = new CellRangeAddressList(1, 1000, 9, 9);
+            DataValidation validation5 = validationHelper5.createValidation(constraint5, addressList5);
+            validation5.setSuppressDropDownArrow(true);
+            validation5.setShowErrorBox(true);
+            sheet.addValidationData(validation5);
+
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -340,7 +470,7 @@ public class ProductServiceImpl {
         }
     }
 
-    public ByteArrayInputStream layoutproductsExcel() throws IOException {
+    public ByteArrayInputStream layoutProductsExcel() throws IOException {
         ByteArrayInputStream byteArrayInputStream = layoutToExcel( );
         return byteArrayInputStream;
     }
@@ -394,7 +524,7 @@ public class ProductServiceImpl {
                 .map(ItemAssy::getITEM_ASSY)
                 .collect(Collectors.toList());
 
-            Sheet sheet = workbook.createSheet("QUADRANT DATA");
+            Sheet sheet = workbook.createSheet("PRODUCT DATA");
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
@@ -435,29 +565,113 @@ public class ProductServiceImpl {
                 }
             }
 
-            Sheet hiddenSheet = workbook.createSheet("HIDDEN_BUILDINGS");
-            for (int i = 0; i < buildingNames.size(); i++) {
-                Row row = hiddenSheet.createRow(i);
+            Sheet hiddenSheetCuring = workbook.createSheet("HIDDEN_ITEMCURINGS");
+            for (int i = 0; i < itemCuringID.size(); i++) {
+                Row row = hiddenSheetCuring.createRow(i);
                 Cell cell = row.createCell(0);
-                cell.setCellValue(buildingNames.get(i));
+                cell.setCellValue(itemCuringID.get(i));
             }
 
-            Name namedRange = workbook.createName();
-            namedRange.setNameName("BuildingNames");
-            namedRange.setRefersToFormula("HIDDEN_BUILDINGS!$A$1:$A$" + buildingNames.size());
+            Name namedRangeCuring = workbook.createName();
+            namedRangeCuring.setNameName("ItemCuringID");
+            namedRangeCuring.setRefersToFormula("HIDDEN_ITEMCURINGS!$A$1:$A$" + itemCuringID.size());
 
-            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetCuring), true);
+
+            Sheet hiddenSheetPattern = workbook.createSheet("HIDDEN_PATTERNS");
+            for (int i = 0; i < patternName.size(); i++) {
+                Row row = hiddenSheetPattern.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(patternName.get(i));
+            }
+
+            Name namedRangePattern = workbook.createName();
+            namedRangePattern.setNameName("patternName");
+            namedRangePattern.setRefersToFormula("HIDDEN_PATTERNS!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetPattern), true);
+
+            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizeID.size(); i++) {
+                Row row = hiddenSheetSize.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(sizeID.get(i));
+            }
+
+            Name namedRangeSize = workbook.createName();
+            namedRangeSize.setNameName("sizeID");
+            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
+
+            Sheet hiddenSheetProductType = workbook.createSheet("HIDDEN_PRODUCTTYPES");
+            for (int i = 0; i < productTypeCategory.size(); i++) {
+                Row row = hiddenSheetProductType.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(productTypeCategory.get(i));
+            }
+
+            Name namedRangeProductType = workbook.createName();
+            namedRangeProductType.setNameName("productTypeCategory");
+            namedRangeProductType.setRefersToFormula("HIDDEN_PRODUCTTYPES!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetProductType), true);
+
+            Sheet hiddenSheetAssy = workbook.createSheet("HIDDEN_ITEMASSYS");
+            for (int i = 0; i < itemAssyID.size(); i++) {
+                Row row = hiddenSheetAssy.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(itemAssyID.get(i));
+            }
+
+            Name namedRangeAssy = workbook.createName();
+            namedRangeAssy.setNameName("ItemAssyID");
+            namedRangeAssy.setRefersToFormula("HIDDEN_ITEMASSYS!$A$1:$A$" + itemCuringID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetAssy), true);
 
             int rowIndex = 1;
             int nomor = 1;
             
-            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
-            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("BuildingNames");
-            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
-            DataValidation validation = validationHelper.createValidation(constraint, addressList);
-            validation.setSuppressDropDownArrow(true);
-            validation.setShowErrorBox(true);
-            sheet.addValidationData(validation);
+            DataValidationHelper validationHelper1 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint1 = validationHelper1.createFormulaListConstraint("ItemCuringID");
+            CellRangeAddressList addressList1 = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation1 = validationHelper1.createValidation(constraint1, addressList1);
+            validation1.setSuppressDropDownArrow(true);
+            validation1.setShowErrorBox(true);
+            sheet.addValidationData(validation1);
+
+            DataValidationHelper validationHelper2 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint2 = validationHelper2.createFormulaListConstraint("patternName");
+            CellRangeAddressList addressList2 = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validation2 = validationHelper2.createValidation(constraint2, addressList2);
+            validation2.setSuppressDropDownArrow(true);
+            validation2.setShowErrorBox(true);
+            sheet.addValidationData(validation2);
+
+            DataValidationHelper validationHelper3 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint3 = validationHelper3.createFormulaListConstraint("sizeID");
+            CellRangeAddressList addressList3 = new CellRangeAddressList(1, 1000, 4, 4);
+            DataValidation validation3 = validationHelper3.createValidation(constraint3, addressList3);
+            validation3.setSuppressDropDownArrow(true);
+            validation3.setShowErrorBox(true);
+            sheet.addValidationData(validation3);
+
+            DataValidationHelper validationHelper4 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint4 = validationHelper4.createFormulaListConstraint("productTypeCategory");
+            CellRangeAddressList addressList4 = new CellRangeAddressList(1, 1000, 5, 5);
+            DataValidation validation4 = validationHelper4.createValidation(constraint4, addressList4);
+            validation4.setSuppressDropDownArrow(true);
+            validation4.setShowErrorBox(true);
+            sheet.addValidationData(validation4);
+
+            DataValidationHelper validationHelper5 = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint5 = validationHelper5.createFormulaListConstraint("itemAssyID");
+            CellRangeAddressList addressList5 = new CellRangeAddressList(1, 1000, 9, 9);
+            DataValidation validation5 = validationHelper5.createValidation(constraint5, addressList5);
+            validation5.setSuppressDropDownArrow(true);
+            validation5.setShowErrorBox(true);
+            sheet.addValidationData(validation5);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
