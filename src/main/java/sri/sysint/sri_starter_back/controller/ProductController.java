@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,6 +41,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
+import sri.sysint.sri_starter_back.model.ItemAssy;
+import sri.sysint.sri_starter_back.model.ItemCuring;
 import sri.sysint.sri_starter_back.model.Pattern;
 import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Product;
@@ -47,7 +50,10 @@ import sri.sysint.sri_starter_back.model.ProductType;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.model.TassSize;
+import sri.sysint.sri_starter_back.repository.ItemAssyRepo;
+import sri.sysint.sri_starter_back.repository.ItemCuringRepo;
 import sri.sysint.sri_starter_back.repository.PatternRepo;
+import sri.sysint.sri_starter_back.repository.ProductRepo;
 import sri.sysint.sri_starter_back.repository.ProductTypeRepo;
 import sri.sysint.sri_starter_back.repository.SizeRepo;
 import sri.sysint.sri_starter_back.service.ProductServiceImpl;
@@ -61,13 +67,22 @@ public class ProductController {
 	private ProductServiceImpl productServiceImpl;
 	
 	@Autowired
-    private ProductTypeRepo productTypeRepo;
+    private ProductRepo productRepo;
+	
+	@Autowired
+    private PatternRepo patternRepo;
+	
+	@Autowired
+    private ItemCuringRepo itemCuringRepo;
+	
+	@Autowired
+    private ItemAssyRepo itemAssyRepo;
 	
 	@Autowired
     private SizeRepo sizeRepo;
 	
 	@Autowired
-    private PatternRepo patternRepo;
+    private ProductTypeRepo productTypeRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -296,101 +311,220 @@ public class ProductController {
 	}
 	
 	@PostMapping("/saveProductExcel")
+	@Transactional
 	public Response saveProductExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-//	    String header = req.getHeader("Authorization");
-//
-//	    if (header == null || !header.startsWith("Bearer ")) {
-//	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-//	    }
-//
-//	    String token = header.replace("Bearer ", "");
-//
-//	    try {
-//	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-//	            .build()
-//	            .verify(token)
-//	            .getSubject();
-//
-//	        if (user != null) {
+	    String header = req.getHeader("Authorization");
+
+	    if (header == null || !header.startsWith("Bearer ")) {
+	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+	    }
+
+	    String token = header.replace("Bearer ", "");
+
+	    try {
+	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+	            .build()
+	            .verify(token)
+	            .getSubject();
+
+	        if (user != null) {
 	            if (file.isEmpty()) {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
-
-	            productServiceImpl.deleteAllProduct();
 
 	            try (InputStream inputStream = file.getInputStream()) {
 	                XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	                XSSFSheet sheet = workbook.getSheetAt(0);
 
 	                List<Product> products = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
 	                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
-	                    if (row == null || isRowEmpty(row)) {
-	                        continue; // Skip empty rows
+
+	                    if (row != null) {
+	                        boolean isEmptyRow = true;
+
+	                        for (int j = 0; j < row.getLastCellNum(); j++) {
+	                            Cell cell = row.getCell(j);
+	                            if (cell != null && cell.getCellType() != CellType.BLANK) {
+	                                isEmptyRow = false;
+	                                break;
+	                            }
+	                        }
+
+	                        if (isEmptyRow) {
+	                            continue;
+	                        }
+
+	                        Product product = new Product();
+	                        Cell partnumberCell = row.getCell(1);
+	                        Cell itemCuringCell = row.getCell(2);
+	                        Cell patternNameCell = row.getCell(3);
+	                        Cell sizeCell = row.getCell(4);
+	                        Cell productTypeCell = row.getCell(5);
+	                        Cell itemAssyCell = row.getCell(9);
+	                        Cell descriptionCell = row.getCell(6);
+	                        Cell rimCell = row.getCell(7);
+	                        Cell wibTubeCell = row.getCell(8);
+	                        Cell itemExtCell = row.getCell(10);
+	                        Cell extDescriptionCell = row.getCell(11);
+	                        Cell qtyPerRakCell = row.getCell(12);
+	                        Cell upperConstantCell = row.getCell(13);
+	                        Cell lowerConstantCell = row.getCell(14);
+
+	                        
+	                        if (partnumberCell == null || partnumberCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 2 (Part Number)");
+	                            continue;
+	                        }
+
+	                        if (itemCuringCell == null || itemCuringCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Item Curing)");
+	                            continue;
+	                        }
+
+	                        String itemCuring = itemCuringCell.getStringCellValue();
+	                        Optional<ItemCuring> itemCuringOpt = itemCuringRepo.findById(itemCuring);
+	                        if (!itemCuringOpt.isPresent()) {
+	                            errorMessages.add("Item Curing tidak ditemukan pada Baris " + (i + 1));
+	                            continue;
+	                        }
+
+	                        if (patternNameCell == null || patternNameCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Pattern Name)");
+	                            continue;
+	                        }
+
+	                        if (sizeCell == null || sizeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Size)");
+	                            continue;
+	                        }
+
+	                        if (productTypeCell == null || productTypeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Product Type)");
+	                            continue;
+	                        }
+
+	                        if (itemAssyCell == null || itemAssyCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 10 (Item Assy)");
+	                            continue;
+	                        }
+
+	                        if (descriptionCell == null || descriptionCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Description)");
+	                            continue;
+	                        }
+
+	                        if (rimCell == null || rimCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 7 (Rim)");
+	                            continue;
+	                        }
+
+	                        if (wibTubeCell == null || wibTubeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 8 (Wib Tube)");
+	                            continue;
+	                        }
+
+	                        if (itemExtCell == null || itemExtCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 10 (Item Ext)");
+	                            continue;
+	                        }
+
+	                        if (extDescriptionCell == null || extDescriptionCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 11 (Ext Description)");
+	                            continue;
+	                        }
+
+	                        if (qtyPerRakCell == null || qtyPerRakCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 12 (Qty Per Rak)");
+	                            continue;
+	                        }
+
+	                        if (upperConstantCell == null || upperConstantCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 13 (Upper Constant)");
+	                            continue;
+	                        }
+
+	                        if (lowerConstantCell == null || lowerConstantCell.getCellType() != CellType.NUMERIC) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong atau Tidak Valid pada Baris " + (i + 1) + " Kolom 14 (Lower Constant)");
+	                            continue;
+	                        }
+
+	                        String patternName = patternNameCell.getStringCellValue();
+	                        Optional<Pattern> patternOpt = patternRepo.findByName(patternName);
+	                        if (!patternOpt.isPresent()) {
+	                            errorMessages.add("Pattern Name tidak ditemukan pada Baris " + (i + 1));
+	                            continue;
+	                        }
+
+	                        String size = sizeCell.getStringCellValue();
+	                        Optional<Size> sizeOpt = sizeRepo.findById(size);
+	                        if (!sizeOpt.isPresent()) {
+	                            errorMessages.add("Size tidak ditemukan pada Baris " + (i + 1));
+	                            continue;
+	                        }
+
+	                        String productType = productTypeCell.getStringCellValue();
+	                        Optional<ProductType> productTypeOpt = productTypeRepo.findByCategory(productType);
+	                        if (!productTypeOpt.isPresent()) {
+	                            errorMessages.add("Product Type tidak ditemukan pada Baris " + (i + 1));
+	                            continue;
+	                        }
+
+	                        String itemAssy = itemAssyCell.getStringCellValue();
+	                        Optional<ItemAssy> itemAssyOpt = itemAssyRepo.findById(itemAssy);
+	                        if (!itemAssyOpt.isPresent()) {
+	                            errorMessages.add("Item Assy tidak ditemukan pada Baris " + (i + 1));
+	                            continue;
+	                        }
+
+	                        product.setPART_NUMBER(getBigDecimalFromCell(partnumberCell));
+	                        product.setITEM_CURING(itemCuring);
+	                        product.setPATTERN_ID(patternOpt.get().getPATTERN_ID());
+	                        product.setSIZE_ID(size);
+	                        product.setPRODUCT_TYPE_ID(productTypeOpt.get().getPRODUCT_TYPE_ID());
+	                        product.setDESCRIPTION(getStringFromCell(descriptionCell));
+	                        product.setRIM(getBigDecimalFromCell(rimCell));
+	                        product.setWIB_TUBE(getStringFromCell(wibTubeCell));
+	                        product.setITEM_ASSY(itemAssy);
+	                        product.setITEM_EXT(getStringFromCell(itemExtCell));
+	                        product.setEXT_DESCRIPTION(getStringFromCell(extDescriptionCell));
+	                        product.setQTY_PER_RAK(getBigDecimalFromCell(qtyPerRakCell));
+	                        product.setUPPER_CONSTANT(getBigDecimalFromCell(upperConstantCell));
+	                        product.setLOWER_CONSTANT(getBigDecimalFromCell(lowerConstantCell));
+	                        product.setSTATUS(BigDecimal.valueOf(1));
+	                        product.setCREATION_DATE(new Date());
+	                        product.setLAST_UPDATE_DATE(new Date());
+
+	                        products.add(product);
 	                    }
-
-	                    Product product = new Product();
-
-	                    product.setPART_NUMBER(getBigDecimalFromCell(row.getCell(1))); 
-	                    product.setITEM_CURING(getStringFromCell(row.getCell(2)));
-
-	                    // PATTERN_NAME -> PATTERN_ID
-	                    String patternName = getStringFromCell(row.getCell(3));
-	                    Optional<Pattern> pattern = patternRepo.findByName(patternName);
-	                    if (pattern.isPresent()) {
-	                        product.setPATTERN_ID(pattern.get().getPATTERN_ID());
-	                    } else {
-	                        throw new ResourceNotFoundException("Pattern not found: " + patternName);
-	                    }
-
-	                    product.setSIZE_ID(getStringFromCell(row.getCell(4)));
-
-
-	                    // CATEGORY -> PRODUCT_TYPE_ID
-	                    String category = getStringFromCell(row.getCell(5));
-	                    Optional<ProductType> productType = productTypeRepo.findByCategory(category);
-	                    if (productType.isPresent()) {
-	                        product.setPRODUCT_TYPE_ID(productType.get().getPRODUCT_TYPE_ID());
-	                    } else {
-	                        throw new ResourceNotFoundException("Product type not found: " + category);
-	                    }
-
-	                    product.setDESCRIPTION(getStringFromCell(row.getCell(6)));
-	                    product.setRIM(getBigDecimalFromCell(row.getCell(7)));
-	                    product.setWIB_TUBE(getStringFromCell(row.getCell(8)));
-	                    product.setITEM_ASSY(getStringFromCell(row.getCell(9)));
-	                    product.setITEM_EXT(getStringFromCell(row.getCell(10)));
-	                    product.setEXT_DESCRIPTION(getStringFromCell(row.getCell(11)));
-	                    product.setQTY_PER_RAK(getBigDecimalFromCell(row.getCell(12)));
-	                    product.setUPPER_CONSTANT(getBigDecimalFromCell(row.getCell(13)));
-	                    product.setLOWER_CONSTANT(getBigDecimalFromCell(row.getCell(14)));
-
-	                    product.setSTATUS(BigDecimal.valueOf(1));
-	                    product.setCREATION_DATE(new Date());
-	                    product.setLAST_UPDATE_DATE(new Date());
-
-	                    productServiceImpl.saveProduct(product);
-	                    products.add(product);
 	                }
 
-	                response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), products);
+
+	                if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+
+	                productServiceImpl.deleteAllProduct();
+	                for (Product product : products) {
+	                    productServiceImpl.saveProduct(product);
+	                }
+
+	                return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), products);
 
 	            } catch (IOException e) {
-	                response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	                throw new RuntimeException("Error processing file", e);
 	            }
-
-//	        } else {
-//	            throw new ResourceNotFoundException("User not found");
-//	        }
-//	    } catch (Exception e) {
-//	        throw new ResourceNotFoundException("JWT token is not valid or expired");
-//	    }
-
-	    return response;
+	        } else {
+	            throw new ResourceNotFoundException("User not found");
+	        }
+	    } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+	    } catch (Exception e) {
+	        throw new ResourceNotFoundException("JWT token is not valid or expired");
+	    }
 	}
-
-
 
 	private boolean isRowEmpty(Row row) {
 	    for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -413,12 +547,12 @@ public class ProductController {
 	                return new BigDecimal(value);
 	            } catch (NumberFormatException e) {
 	                System.out.println("Invalid number format in cell: " + value);
-	                return null; // Handle it as needed
+	                return null; 
 	            }
 	        case NUMERIC:
 	            return BigDecimal.valueOf(cell.getNumericCellValue());
 	        default:
-	            return null; // Handle it as needed
+	            return null; 
 	    }
 	}
 
@@ -431,7 +565,7 @@ public class ProductController {
 	
     @RequestMapping("/exportProductsExcel")
     public ResponseEntity<InputStreamResource> exportProductsExcel() throws IOException {
-        String filename = "MASTER_PRODUCT.xlsx";
+        String filename = "EXPORT_MASTER_PRODUCT.xlsx";
 
         ByteArrayInputStream data = productServiceImpl.exportProductsExcel();
         InputStreamResource file = new InputStreamResource(data);
@@ -441,17 +575,18 @@ public class ProductController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
+    
+    @RequestMapping("/layoutProductsExcel")
+    public ResponseEntity<InputStreamResource> layoutProductsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_PRODUCT.xlsx";
 
-    @GetMapping("/layoutProductsExcel")
-	public ResponseEntity<InputStreamResource> layoutProductsExcel() throws IOException {
-		String filename = "LAYOUT_MASTER_PRODUCT.xlsx";
-		ByteArrayInputStream data = productServiceImpl.layoutProductsExcel();
-		InputStreamResource file = new InputStreamResource(data);
+        ByteArrayInputStream data = productServiceImpl.layoutProductsExcel();
+        InputStreamResource file = new InputStreamResource(data);
 
-		return ResponseEntity.ok()
-				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-				.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-				.body(file);
-	}
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
 	
 }
