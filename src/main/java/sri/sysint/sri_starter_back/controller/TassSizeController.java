@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -41,9 +42,13 @@ import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.TassSize;
+import sri.sysint.sri_starter_back.repository.MachineTassTypeRepo;
+import sri.sysint.sri_starter_back.repository.SizeRepo;
 import sri.sysint.sri_starter_back.model.CuringSize;
+import sri.sysint.sri_starter_back.model.MachineTassType;
 import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.service.TassSizeServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -54,6 +59,12 @@ public class TassSizeController {
 	@Autowired
 	private TassSizeServiceImpl TassSizeServiceImpl;
 	
+	@Autowired
+    private SizeRepo sizeRepo;
+	
+	@Autowired
+    private MachineTassTypeRepo machineTassTypeRepo;
+
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -303,14 +314,20 @@ public class TassSizeController {
 	    	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	    	    }
 	    	    
-	    	    TassSizeServiceImpl.deleteAllTassSize();
-
 	    	    try (InputStream inputStream = file.getInputStream()) {
 	    	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
 	    	        XSSFSheet sheet = workbook.getSheetAt(0);
 	    	        
 	    	        List<TassSize> TassSizes = new ArrayList<>();
-
+					List<Size> activeSizes = sizeRepo.findSizeActive();
+					List<String> errorMessages = new ArrayList<>();
+					List<MachineTassType> activeTassTypes = machineTassTypeRepo.findMachineTassTypeActive();
+					List<String> sizeIDs = activeSizes.stream()
+						.map(Size::getSIZE_ID)
+						.collect(Collectors.toList());
+					List<String> tassTypeIDs = activeTassTypes.stream()
+						.map(MachineTassType::getMACHINETASSTYPE_ID)
+						.collect(Collectors.toList());
 	    	        
 	    	        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
 	                    Row row = sheet.getRow(i);
@@ -335,8 +352,26 @@ public class TassSizeController {
 	                        Cell machineTassTypeCell = row.getCell(2);
 	                        Cell sizeIdCell = row.getCell(3);
 	                        Cell capacityCell = row.getCell(4);
+	                        if (machineTassTypeCell == null || machineTassTypeCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (Machine Tass Type)");
+	                            continue;
+	                        }
 
-	                        if (machineTassTypeCell != null) {
+	                        if (sizeIdCell == null || sizeIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Size ID)");
+	                            continue;
+	                        }
+							if (capacityCell == null || capacityCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Capacity)");
+	                            continue;
+	                        }
+							String sizeID = sizeIdCell.getStringCellValue();
+							String machineTypeID = machineTassTypeCell.getStringCellValue();
+
+							Optional<Size> sizeOpt = sizeRepo.findById(sizeID);
+							Optional<MachineTassType> machineTassTypeOpt = machineTassTypeRepo.findById(machineTypeID);
+
+	                        if (sizeOpt.isPresent() || machineTassTypeOpt.isPresent() ) {
 	                        	tassSize.setTASSIZE_ID(TassSizeServiceImpl.getNewId());
 	                        	tassSize.setMACHINETASSTYPE_ID(machineTassTypeCell.getStringCellValue());
 	    	                	tassSize.setSIZE_ID(sizeIdCell.getStringCellValue());
@@ -344,26 +379,34 @@ public class TassSizeController {
 	    	                	tassSize.setSTATUS(BigDecimal.valueOf(1));
 	    	                	tassSize.setCREATION_DATE(new Date());
 	    	                	tassSize.setLAST_UPDATE_DATE(new Date());
+								TassSizes.add(tassSize);
+	                        }else {
+	                            errorMessages.add("Data Tidak Valid, Data Tass Size pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
-
-	                        TassSizeServiceImpl.saveTassSize(tassSize);
-	    	                TassSizes.add(tassSize);
 	                    }
 	                }
+					if(!errorMessages.isEmpty()){
+						return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+					}
+
+					TassSizeServiceImpl.deleteAllTassSize();
+					for(TassSize tassSize: TassSizes){
+						TassSizeServiceImpl.saveTassSize(tassSize);
+					}
 	               
-	    	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), TassSizes);
+	    	        return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), TassSizes);
 
 	    	    } catch (IOException e) {
-	    	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+	    	        return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
 	    	    }
 	        } else {
 	            throw new ResourceNotFoundException("User not found");
 	        }
-	    } catch (Exception e) {
+	    } catch (IllegalArgumentException e) {
+			return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+		} catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-
-	    return response;
 	}
 	
     @GetMapping("/exportTassSizeexcel")
@@ -371,6 +414,19 @@ public class TassSizeController {
         String filename = "MASTER_TASS_SIZE.xlsx";
 
         ByteArrayInputStream data = TassSizeServiceImpl.exportTassSizeExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+
+    @GetMapping("/layoutTassSizesExcel")
+    public ResponseEntity<InputStreamResource> layoutTassSizesExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_TASS_SIZE.xlsx";
+
+        ByteArrayInputStream data = TassSizeServiceImpl.layoutTassSizesExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()

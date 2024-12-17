@@ -8,12 +8,14 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
-import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
@@ -23,6 +25,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -30,8 +33,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.CTAssy;
+import sri.sysint.sri_starter_back.model.ItemAssy;
+import sri.sysint.sri_starter_back.model.MachineTass;
 import sri.sysint.sri_starter_back.model.ProductType;
 import sri.sysint.sri_starter_back.repository.CTAssyRepo;
+import sri.sysint.sri_starter_back.repository.ItemAssyRepo;
+import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 
 @Service
 @Transactional
@@ -39,6 +46,12 @@ public class CTAssyServiceImpl {
 	@Autowired
     private CTAssyRepo ctAssyRepo;
 	
+    @Autowired
+    private ItemAssyRepo itemAssyRepo;
+
+    @Autowired
+    private MachineTassRepo machineTassRepo;
+
     public CTAssyServiceImpl(CTAssyRepo ctAssyRepo){
         this.ctAssyRepo = ctAssyRepo;
     }
@@ -191,6 +204,14 @@ public class CTAssyServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+            List<MachineTass> activeMachineTasss = machineTassRepo.findMachineTassActive();
+            List<ItemAssy> activeItemAssys = itemAssyRepo.findItemAssyActive();
+            List<String> machineTassWCT = activeMachineTasss.stream()
+                .map(MachineTass::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+             List<String> itemAssyID = activeItemAssys.stream()
+                 .map(ItemAssy::getITEM_ASSY)
+                 .collect(Collectors.toList());
             Sheet sheet = workbook.createSheet("CT_ASSY DATA");
 
             // Create fonts for header and sub-header
@@ -203,112 +224,112 @@ public class CTAssyServiceImpl {
             subHeaderFont.setBold(true);
             subHeaderFont.setFontHeightInPoints((short) 11);
             
-	          CellStyle borderStyle = workbook.createCellStyle();
-	          borderStyle.setBorderTop(BorderStyle.THIN);
-	          borderStyle.setBorderBottom(BorderStyle.THIN);
-	          borderStyle.setBorderLeft(BorderStyle.THIN);
-	          borderStyle.setBorderRight(BorderStyle.THIN);
-	          borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
-	          borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
-	          borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
-	          borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
-	          
-	          byte[] whiteColor = new byte[] {(byte) 255, (byte) 255, (byte) 255};
-	          byte[] greyColor = new byte[] {(byte) 191, (byte) 191, (byte) 191};
-	          byte[] brownColor = new byte[] {(byte) 191, (byte) 143, (byte) 0};
-	          byte[] babyblueColor = new byte[] {(byte) 142, (byte) 169, (byte) 219};
-	          byte[] yellowColor = new byte[] {(byte) 255, (byte) 255, (byte) 0};
-	          byte[] sageGreenColor = new byte[] {(byte) 169, (byte) 208, (byte) 142};
-	          byte[] orangeColor = new byte[] {(byte) 244, (byte) 176, (byte) 132};
-	          byte[] greenColor = new byte[] {(byte) 0, (byte) 176, (byte) 80};
-	          byte[] leafgreenColor = new byte[] {(byte) 146, (byte) 208, (byte) 80};
-	          byte[] blueColor = new byte[] {(byte) 0, (byte) 112, (byte) 192};
-	          byte[] skyblueColor = new byte[] {(byte) 0, (byte) 176, (byte) 240};
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            
+            byte[] whiteColor = new byte[] {(byte) 255, (byte) 255, (byte) 255};
+            byte[] greyColor = new byte[] {(byte) 191, (byte) 191, (byte) 191};
+            byte[] brownColor = new byte[] {(byte) 191, (byte) 143, (byte) 0};
+            byte[] babyblueColor = new byte[] {(byte) 142, (byte) 169, (byte) 219};
+            byte[] yellowColor = new byte[] {(byte) 255, (byte) 255, (byte) 0};
+            byte[] sageGreenColor = new byte[] {(byte) 169, (byte) 208, (byte) 142};
+            byte[] orangeColor = new byte[] {(byte) 244, (byte) 176, (byte) 132};
+            byte[] greenColor = new byte[] {(byte) 0, (byte) 176, (byte) 80};
+            byte[] leafgreenColor = new byte[] {(byte) 146, (byte) 208, (byte) 80};
+            byte[] blueColor = new byte[] {(byte) 0, (byte) 112, (byte) 192};
+            byte[] skyblueColor = new byte[] {(byte) 0, (byte) 176, (byte) 240};
 
 
             // Create cell styles with background colors
-	          CellStyle whiteStyle = createCellStyleWithBorder(workbook, whiteColor);
-	          CellStyle lightGreyStyle = createCellStyleWithBorder(workbook, greyColor);
-	          CellStyle lightBrownStyle = createCellStyleWithBorder(workbook, brownColor);
-	          CellStyle skyBlueStyle = createCellStyleWithBorder(workbook, babyblueColor);
-	          CellStyle yellowStyle = createCellStyleWithBorder(workbook, yellowColor);
-	          CellStyle darkGreenStyle = createCellStyleWithBorder(workbook, greenColor);
-	          CellStyle lightGreenStyle = createCellStyleWithBorder(workbook, leafgreenColor);
-	          CellStyle sageGreenStyle = createCellStyleWithBorder(workbook, sageGreenColor); 
-	          CellStyle lightOrangeStyle = createCellStyleWithBorder(workbook, orangeColor); 
-	          CellStyle darkBlueStyle = createCellStyleWithBorder(workbook, blueColor);
-	          CellStyle lightBlueStyle = createCellStyleWithBorder(workbook, skyblueColor);
+            CellStyle whiteStyle = createCellStyleWithBorder(workbook, whiteColor);
+            CellStyle lightGreyStyle = createCellStyleWithBorder(workbook, greyColor);
+            CellStyle lightBrownStyle = createCellStyleWithBorder(workbook, brownColor);
+            CellStyle skyBlueStyle = createCellStyleWithBorder(workbook, babyblueColor);
+            CellStyle yellowStyle = createCellStyleWithBorder(workbook, yellowColor);
+            CellStyle darkGreenStyle = createCellStyleWithBorder(workbook, greenColor);
+            CellStyle lightGreenStyle = createCellStyleWithBorder(workbook, leafgreenColor);
+            CellStyle sageGreenStyle = createCellStyleWithBorder(workbook, sageGreenColor); 
+            CellStyle lightOrangeStyle = createCellStyleWithBorder(workbook, orangeColor); 
+            CellStyle darkBlueStyle = createCellStyleWithBorder(workbook, blueColor);
+            CellStyle lightBlueStyle = createCellStyleWithBorder(workbook, skyblueColor);
+        
+            // Create the first header row and merge cells
+            Row headerRow0 = sheet.createRow(0);
+            createMergedHeaderCell(sheet, headerRow0, 0, 11, "BASE DATA ROUTING SAP", whiteStyle);
+            createMergedHeaderCell(sheet, headerRow0, 12, 13, "JAM KERJA", whiteStyle);
+            createHeaderCell(headerRow0, 14, ":", whiteStyle);
+            createHeaderCell(headerRow0, 15, "", yellowStyle);
+            createHeaderCell(headerRow0, 16, "BTOL", yellowStyle);
+            createHeaderCell(headerRow0, 17, "", whiteStyle);
+            createMergedHeaderCell(sheet, headerRow0, 18, 21, "ALLOWANCE", lightOrangeStyle);
+            createMergedHeaderCell(sheet, headerRow0, 22, 27, "OPERATIONAL TIME", darkGreenStyle);
+            createMergedHeaderCell(sheet, headerRow0, 28, 35, "KAPASITAS", darkBlueStyle);
+
+            Row headerRow1 = sheet.createRow(1); // Baris pertama
+            Row headerRow2 = sheet.createRow(2); // Baris kedua
             
-	          // Create the first header row and merge cells
-	          Row headerRow0 = sheet.createRow(0);
-	          createMergedHeaderCell(sheet, headerRow0, 0, 11, "BASE DATA ROUTING SAP", whiteStyle);
-	          createMergedHeaderCell(sheet, headerRow0, 12, 13, "JAM KERJA", whiteStyle);
-	          createHeaderCell(headerRow0, 14, ":", whiteStyle);
-	          createHeaderCell(headerRow0, 15, "", yellowStyle);
-	          createHeaderCell(headerRow0, 16, "BTOL", yellowStyle);
-	          createHeaderCell(headerRow0, 17, "", whiteStyle);
-	          createMergedHeaderCell(sheet, headerRow0, 18, 21, "ALLOWANCE", lightOrangeStyle);
-	          createMergedHeaderCell(sheet, headerRow0, 22, 27, "OPERATIONAL TIME", darkGreenStyle);
-	          createMergedHeaderCell(sheet, headerRow0, 28, 35, "KAPASITAS", darkBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 0, 0, "WIP", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 1, 1, "DESCRIPTION", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 2, 2, "Group Counter", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 3, 3, "Var Group Counter", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 4, 4, "Sequence", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 5, 5, "WCT", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 6, 6, "Operation Short Text", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 7, 7, "Operation Unit", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 8, 8, "Base Quantity", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 9, 9, "Standard Value Unit", lightGreyStyle);
 
-	          Row headerRow1 = sheet.createRow(1); // Baris pertama
-	          Row headerRow2 = sheet.createRow(2); // Baris kedua
-	          
-	          createMergedHeaderCell(sheet, 1, 2, 0, 0, "WIP", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 1, 1, "DESCRIPTION", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 2, 2, "Group Counter", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 3, 3, "Var Group Counter", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 4, 4, "Sequence", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 5, 5, "WCT", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 6, 6, "Operation Short Text", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 7, 7, "Operation Unit", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 8, 8, "Base Quantity", lightGreyStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 9, 9, "Standard Value Unit", lightGreyStyle);
-
-	          
-	          createHeaderCell(headerRow1, 10, "CT", lightBrownStyle);
-	          createHeaderCell(headerRow1, 11, "CT", lightBrownStyle);
-	          createMergedHeaderCell(sheet, headerRow1, 12, 14, "normal shift-", skyBlueStyle);
-	          createHeaderCell(headerRow1, 15, "FRIDAY", sageGreenStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 16, 16, "TOTAL NORMAL", skyBlueStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 17, 17, "TOTAL FRIDAY", sageGreenStyle);
-	          createHeaderCell(headerRow1, 18, "NORMAL", lightOrangeStyle);
-	          createHeaderCell(headerRow1, 19, "NORMAL", lightOrangeStyle);
-	          createHeaderCell(headerRow1, 20, "NORMAL", lightOrangeStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 21, 21, "TOTAL", lightOrangeStyle);
-	          createHeaderCell(headerRow1, 22, "NORMAL", lightGreenStyle);
-	          createHeaderCell(headerRow1, 23, "NORMAL", lightGreenStyle);
-	          createHeaderCell(headerRow1, 24, "NORMAL", lightGreenStyle);
-	          createHeaderCell(headerRow1, 25, "JUMAT", darkGreenStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 26, 26, "TOTAL NORMAL", lightGreenStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 27, 27, "TOTAL FRIDAY", darkGreenStyle);
-	          createHeaderCell(headerRow1, 28, "NORMAL", lightBlueStyle);
-	          createHeaderCell(headerRow1, 29, "NORMAL", lightBlueStyle);
-	          createHeaderCell(headerRow1, 30, "NORMAL", lightBlueStyle);
-	          createHeaderCell(headerRow1, 31, "JUMAT", darkBlueStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 32, 32, "TOTAL NORMAL", lightBlueStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 33, 33, "TOTAL FRIDAY", darkBlueStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 34, 34, "WAKTU TOTAL /CT", lightBlueStyle);
-	          createMergedHeaderCell(sheet, 1, 2, 35, 35, "WAKTU TOTAL /CT FRIDAY", darkBlueStyle);
+            
+            createHeaderCell(headerRow1, 10, "CT", lightBrownStyle);
+            createHeaderCell(headerRow1, 11, "CT", lightBrownStyle);
+            createMergedHeaderCell(sheet, headerRow1, 12, 14, "normal shift-", skyBlueStyle);
+            createHeaderCell(headerRow1, 15, "FRIDAY", sageGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 16, 16, "TOTAL NORMAL", skyBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 17, 17, "TOTAL FRIDAY", sageGreenStyle);
+            createHeaderCell(headerRow1, 18, "NORMAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 19, "NORMAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 20, "NORMAL", lightOrangeStyle);
+            createMergedHeaderCell(sheet, 1, 2, 21, 21, "TOTAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 22, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 23, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 24, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 25, "JUMAT", darkGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 26, 26, "TOTAL NORMAL", lightGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 27, 27, "TOTAL FRIDAY", darkGreenStyle);
+            createHeaderCell(headerRow1, 28, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 29, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 30, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 31, "JUMAT", darkBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 32, 32, "TOTAL NORMAL", lightBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 33, 33, "TOTAL FRIDAY", darkBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 34, 34, "WAKTU TOTAL /CT", lightBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 35, 35, "WAKTU TOTAL /CT FRIDAY", darkBlueStyle);
 
 
-	          createHeaderCell(headerRow2, 10, "SEKON/1PC", lightBrownStyle);
-	          createHeaderCell(headerRow2, 11, "HR/1000PC", lightBrownStyle);
-	          createHeaderCell(headerRow2, 12, "1", skyBlueStyle);
-	          createHeaderCell(headerRow2, 13, "2", skyBlueStyle);
-	          createHeaderCell(headerRow2, 14, "3", skyBlueStyle);
-	          createHeaderCell(headerRow2, 15, "4", sageGreenStyle);
-	          createHeaderCell(headerRow2, 18, "SHIFT 1", lightOrangeStyle);
-	          createHeaderCell(headerRow2, 19, "SHIFT 2", lightOrangeStyle);
-	          createHeaderCell(headerRow2, 20, "SHIFT 3", lightOrangeStyle);
-	          createHeaderCell(headerRow2, 22, "SHIFT 1", lightGreenStyle);
-	          createHeaderCell(headerRow2, 23, "SHIFT 2", lightGreenStyle);
-	          createHeaderCell(headerRow2, 24, "SHIFT 3", lightGreenStyle);
-	          createHeaderCell(headerRow2, 25, "SHIFT 1", darkGreenStyle);
-	          createHeaderCell(headerRow2, 28, "SHIFT 1", lightBlueStyle);
-	          createHeaderCell(headerRow2, 29, "SHIFT 2", lightBlueStyle);
-	          createHeaderCell(headerRow2, 30, "SHIFT 3", lightBlueStyle);
-	          createHeaderCell(headerRow2, 31, "SHIFT 1", darkBlueStyle);
+            createHeaderCell(headerRow2, 10, "SEKON/1PC", lightBrownStyle);
+            createHeaderCell(headerRow2, 11, "HR/1000PC", lightBrownStyle);
+            createHeaderCell(headerRow2, 12, "1", skyBlueStyle);
+            createHeaderCell(headerRow2, 13, "2", skyBlueStyle);
+            createHeaderCell(headerRow2, 14, "3", skyBlueStyle);
+            createHeaderCell(headerRow2, 15, "4", sageGreenStyle);
+            createHeaderCell(headerRow2, 18, "SHIFT 1", lightOrangeStyle);
+            createHeaderCell(headerRow2, 19, "SHIFT 2", lightOrangeStyle);
+            createHeaderCell(headerRow2, 20, "SHIFT 3", lightOrangeStyle);
+            createHeaderCell(headerRow2, 22, "SHIFT 1", lightGreenStyle);
+            createHeaderCell(headerRow2, 23, "SHIFT 2", lightGreenStyle);
+            createHeaderCell(headerRow2, 24, "SHIFT 3", lightGreenStyle);
+            createHeaderCell(headerRow2, 25, "SHIFT 1", darkGreenStyle);
+            createHeaderCell(headerRow2, 28, "SHIFT 1", lightBlueStyle);
+            createHeaderCell(headerRow2, 29, "SHIFT 2", lightBlueStyle);
+            createHeaderCell(headerRow2, 30, "SHIFT 3", lightBlueStyle);
+            createHeaderCell(headerRow2, 31, "SHIFT 1", darkBlueStyle);
 
 
             // Populate data rows with consistent cell styling
@@ -465,7 +486,48 @@ public class CTAssyServiceImpl {
             sheet.setColumnWidth(33, 15 * 256); // Kolom AH: KAPS_TOTAL_SHIFT_FRIDAY
             sheet.setColumnWidth(34, 25 * 256); // Kolom AI: WAKTU_TOTAL_CT_NORMAL
             sheet.setColumnWidth(35, 25 * 256); // Kolom AJ: WAKTU_TOTAL_CT_FRIDAY
-            
+
+            Sheet hiddenSheetMachineCuring = workbook.createSheet("HIDDEN_MACHINETASSS");
+            for (int i = 0; i < machineTassWCT.size(); i++) {
+                Row row = hiddenSheetMachineCuring.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineTassWCT.get(i));
+            }
+
+            Name namedRangeMachineCuring = workbook.createName();
+            namedRangeMachineCuring.setNameName("machineTassWCT");
+            namedRangeMachineCuring.setRefersToFormula("HIDDEN_MACHINETASSS!$A$1:$A$" + machineTassWCT.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetMachineCuring), true);
+
+            Sheet hiddenSheetItemAssy = workbook.createSheet("HIDDEN_ITEMASSYS");
+            for (int i = 0; i < itemAssyID.size(); i++) {
+                Row row = hiddenSheetItemAssy.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(itemAssyID.get(i));
+            }
+
+            Name namedRangeItemAssy = workbook.createName();
+            namedRangeItemAssy.setNameName("itemAssyID");
+            namedRangeItemAssy.setRefersToFormula("HIDDEN_ITEMASSYS!$A$1:$A$" + itemAssyID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetItemAssy), true);
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint itemAssyTypeConstraint = validationHelper.createFormulaListConstraint("itemAssyID");
+            CellRangeAddressList itemAssyTypeAddressList = new CellRangeAddressList(3, 1000, 0, 0);
+            DataValidation itemAssyTypeValidation = validationHelper.createValidation(itemAssyTypeConstraint, itemAssyTypeAddressList);
+            itemAssyTypeValidation.setSuppressDropDownArrow(true);
+            itemAssyTypeValidation.setShowErrorBox(true);
+            sheet.addValidationData(itemAssyTypeValidation);
+
+            DataValidationConstraint machineTassWCTConstraint = validationHelper.createFormulaListConstraint("machineTassWCT");
+            CellRangeAddressList machineTassWCTAddressList = new CellRangeAddressList(3, 1000, 6, 6);
+            DataValidation machineTassWCTValidation = validationHelper.createValidation(machineTassWCTConstraint, machineTassWCTAddressList);
+            machineTassWCTValidation.setSuppressDropDownArrow(true);
+            machineTassWCTValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineTassWCTValidation);
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
@@ -575,6 +637,235 @@ public class CTAssyServiceImpl {
                 }
                 mergedCell.setCellStyle(mergedCellStyle); 
             }
+        }
+    }
+
+    public ByteArrayInputStream layoutCTAssysExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel();
+        return byteArrayInputStream;
+    }
+
+    private ByteArrayInputStream layoutToExcel() throws IOException {
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            List<MachineTass> activeMachineTasss = machineTassRepo.findMachineTassActive();
+            List<ItemAssy> activeItemAssys = itemAssyRepo.findItemAssyActive();
+            List<String> machineTassWCT = activeMachineTasss.stream()
+                .map(MachineTass::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+             List<String> itemAssyID = activeItemAssys.stream()
+                 .map(ItemAssy::getITEM_ASSY)
+                 .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("CT_ASSY DATA");
+
+            // Create fonts for header and sub-header
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setFontHeightInPoints((short) 12);
+            headerFont.setColor(IndexedColors.BLACK.getIndex());
+
+            Font subHeaderFont = workbook.createFont();
+            subHeaderFont.setBold(true);
+            subHeaderFont.setFontHeightInPoints((short) 11);
+        
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            
+            byte[] whiteColor = new byte[] {(byte) 255, (byte) 255, (byte) 255};
+            byte[] greyColor = new byte[] {(byte) 191, (byte) 191, (byte) 191};
+            byte[] brownColor = new byte[] {(byte) 191, (byte) 143, (byte) 0};
+            byte[] babyblueColor = new byte[] {(byte) 142, (byte) 169, (byte) 219};
+            byte[] yellowColor = new byte[] {(byte) 255, (byte) 255, (byte) 0};
+            byte[] sageGreenColor = new byte[] {(byte) 169, (byte) 208, (byte) 142};
+            byte[] orangeColor = new byte[] {(byte) 244, (byte) 176, (byte) 132};
+            byte[] greenColor = new byte[] {(byte) 0, (byte) 176, (byte) 80};
+            byte[] leafgreenColor = new byte[] {(byte) 146, (byte) 208, (byte) 80};
+            byte[] blueColor = new byte[] {(byte) 0, (byte) 112, (byte) 192};
+            byte[] skyblueColor = new byte[] {(byte) 0, (byte) 176, (byte) 240};
+
+
+            // Create cell styles with background colors
+            CellStyle whiteStyle = createCellStyleWithBorder(workbook, whiteColor);
+            CellStyle lightGreyStyle = createCellStyleWithBorder(workbook, greyColor);
+            CellStyle lightBrownStyle = createCellStyleWithBorder(workbook, brownColor);
+            CellStyle skyBlueStyle = createCellStyleWithBorder(workbook, babyblueColor);
+            CellStyle yellowStyle = createCellStyleWithBorder(workbook, yellowColor);
+            CellStyle darkGreenStyle = createCellStyleWithBorder(workbook, greenColor);
+            CellStyle lightGreenStyle = createCellStyleWithBorder(workbook, leafgreenColor);
+            CellStyle sageGreenStyle = createCellStyleWithBorder(workbook, sageGreenColor); 
+            CellStyle lightOrangeStyle = createCellStyleWithBorder(workbook, orangeColor); 
+            CellStyle darkBlueStyle = createCellStyleWithBorder(workbook, blueColor);
+            CellStyle lightBlueStyle = createCellStyleWithBorder(workbook, skyblueColor);
+        
+            // Create the first header row and merge cells
+            Row headerRow0 = sheet.createRow(0);
+            createMergedHeaderCell(sheet, headerRow0, 0, 11, "BASE DATA ROUTING SAP", whiteStyle);
+            createMergedHeaderCell(sheet, headerRow0, 12, 13, "JAM KERJA", whiteStyle);
+            createHeaderCell(headerRow0, 14, ":", whiteStyle);
+            createHeaderCell(headerRow0, 15, "", yellowStyle);
+            createHeaderCell(headerRow0, 16, "BTOL", yellowStyle);
+            createHeaderCell(headerRow0, 17, "", whiteStyle);
+            createMergedHeaderCell(sheet, headerRow0, 18, 21, "ALLOWANCE", lightOrangeStyle);
+            createMergedHeaderCell(sheet, headerRow0, 22, 27, "OPERATIONAL TIME", darkGreenStyle);
+            createMergedHeaderCell(sheet, headerRow0, 28, 35, "KAPASITAS", darkBlueStyle);
+
+            Row headerRow1 = sheet.createRow(1); // Baris pertama
+            Row headerRow2 = sheet.createRow(2); // Baris kedua
+            
+            createMergedHeaderCell(sheet, 1, 2, 0, 0, "WIP", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 1, 1, "DESCRIPTION", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 2, 2, "Group Counter", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 3, 3, "Var Group Counter", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 4, 4, "Sequence", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 5, 5, "WCT", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 6, 6, "Operation Short Text", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 7, 7, "Operation Unit", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 8, 8, "Base Quantity", lightGreyStyle);
+            createMergedHeaderCell(sheet, 1, 2, 9, 9, "Standard Value Unit", lightGreyStyle);
+
+            
+            createHeaderCell(headerRow1, 10, "CT", lightBrownStyle);
+            createHeaderCell(headerRow1, 11, "CT", lightBrownStyle);
+            createMergedHeaderCell(sheet, headerRow1, 12, 14, "normal shift-", skyBlueStyle);
+            createHeaderCell(headerRow1, 15, "FRIDAY", sageGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 16, 16, "TOTAL NORMAL", skyBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 17, 17, "TOTAL FRIDAY", sageGreenStyle);
+            createHeaderCell(headerRow1, 18, "NORMAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 19, "NORMAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 20, "NORMAL", lightOrangeStyle);
+            createMergedHeaderCell(sheet, 1, 2, 21, 21, "TOTAL", lightOrangeStyle);
+            createHeaderCell(headerRow1, 22, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 23, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 24, "NORMAL", lightGreenStyle);
+            createHeaderCell(headerRow1, 25, "JUMAT", darkGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 26, 26, "TOTAL NORMAL", lightGreenStyle);
+            createMergedHeaderCell(sheet, 1, 2, 27, 27, "TOTAL FRIDAY", darkGreenStyle);
+            createHeaderCell(headerRow1, 28, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 29, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 30, "NORMAL", lightBlueStyle);
+            createHeaderCell(headerRow1, 31, "JUMAT", darkBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 32, 32, "TOTAL NORMAL", lightBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 33, 33, "TOTAL FRIDAY", darkBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 34, 34, "WAKTU TOTAL /CT", lightBlueStyle);
+            createMergedHeaderCell(sheet, 1, 2, 35, 35, "WAKTU TOTAL /CT FRIDAY", darkBlueStyle);
+
+
+            createHeaderCell(headerRow2, 10, "SEKON/1PC", lightBrownStyle);
+            createHeaderCell(headerRow2, 11, "HR/1000PC", lightBrownStyle);
+            createHeaderCell(headerRow2, 12, "1", skyBlueStyle);
+            createHeaderCell(headerRow2, 13, "2", skyBlueStyle);
+            createHeaderCell(headerRow2, 14, "3", skyBlueStyle);
+            createHeaderCell(headerRow2, 15, "4", sageGreenStyle);
+            createHeaderCell(headerRow2, 18, "SHIFT 1", lightOrangeStyle);
+            createHeaderCell(headerRow2, 19, "SHIFT 2", lightOrangeStyle);
+            createHeaderCell(headerRow2, 20, "SHIFT 3", lightOrangeStyle);
+            createHeaderCell(headerRow2, 22, "SHIFT 1", lightGreenStyle);
+            createHeaderCell(headerRow2, 23, "SHIFT 2", lightGreenStyle);
+            createHeaderCell(headerRow2, 24, "SHIFT 3", lightGreenStyle);
+            createHeaderCell(headerRow2, 25, "SHIFT 1", darkGreenStyle);
+            createHeaderCell(headerRow2, 28, "SHIFT 1", lightBlueStyle);
+            createHeaderCell(headerRow2, 29, "SHIFT 2", lightBlueStyle);
+            createHeaderCell(headerRow2, 30, "SHIFT 3", lightBlueStyle);
+            createHeaderCell(headerRow2, 31, "SHIFT 1", darkBlueStyle);
+
+            sheet.setColumnWidth(1, 20 * 256);  // Kolom B: DESCRIPTION
+            sheet.setColumnWidth(2, 20 * 256);  // Kolom C: Group Counter
+            sheet.setColumnWidth(3, 20 * 256);  // Kolom D: Var Group Counter
+            sheet.setColumnWidth(4, 20 * 256);  // Kolom E: Sequence
+            sheet.setColumnWidth(5, 10 * 256);  // Kolom F: WCT
+            sheet.setColumnWidth(6, 35 * 256);  // Kolom G: Operation Short Text
+            sheet.setColumnWidth(7, 30 * 256);  // Kolom H: Operation Unit
+            sheet.setColumnWidth(8, 15 * 256);  // Kolom I: Base Quantity
+            sheet.setColumnWidth(9, 20 * 256);  // Kolom J: Standard Value Unit
+            sheet.setColumnWidth(10, 15 * 256); // Kolom K: CT_SEC_1
+            sheet.setColumnWidth(11, 15 * 256); // Kolom L: CT_HR_1000
+            sheet.setColumnWidth(12, 12 * 256); // Kolom M: WH_NORMAL_SHIFT_0
+            sheet.setColumnWidth(13, 12 * 256); // Kolom N: WH_NORMAL_SHIFT_1
+            sheet.setColumnWidth(14, 12 * 256); // Kolom O: WH_NORMAL_SHIFT_2
+            sheet.setColumnWidth(15, 12 * 256); // Kolom P: WH_SHIFT_FRIDAY
+            sheet.setColumnWidth(16, 15 * 256); // Kolom Q: WH_TOTAL_NORMAL_SHIFT
+            sheet.setColumnWidth(17, 15 * 256); // Kolom R: WH_TOTAL_SHIFT_FRIDAY
+            sheet.setColumnWidth(18, 15 * 256); // Kolom S: ALLOW_NORMAL_SHIFT_0
+            sheet.setColumnWidth(19, 15 * 256); // Kolom T: ALLOW_NORMAL_SHIFT_1
+            sheet.setColumnWidth(20, 15 * 256); // Kolom U: ALLOW_NORMAL_SHIFT_2
+            sheet.setColumnWidth(21, 15 * 256); // Kolom V: ALLOW_TOTAL
+            sheet.setColumnWidth(22, 15 * 256); // Kolom W: OP_TIME_NORMAL_SHIFT_0
+            sheet.setColumnWidth(23, 15 * 256); // Kolom X: OP_TIME_NORMAL_SHIFT_1
+            sheet.setColumnWidth(24, 15 * 256); // Kolom Y: OP_TIME_NORMAL_SHIFT_2
+            sheet.setColumnWidth(25, 15 * 256); // Kolom Z: OP_TIME_SHIFT_FRIDAY
+            sheet.setColumnWidth(26, 15 * 256); // Kolom AA: OP_TIME_TOTAL_NORMAL_SHIFT
+            sheet.setColumnWidth(27, 15 * 256); // Kolom AB: OP_TIME_TOTAL_SHIFT_FRIDAY
+            sheet.setColumnWidth(28, 15 * 256); // Kolom AC: KAPS_NORMAL_SHIFT_0
+            sheet.setColumnWidth(29, 15 * 256); // Kolom AD: KAPS_NORMAL_SHIFT_1
+            sheet.setColumnWidth(30, 15 * 256); // Kolom AE: KAPS_NORMAL_SHIFT_2
+            sheet.setColumnWidth(31, 15 * 256); // Kolom AF: KAPS_SHIFT_FRIDAY
+            sheet.setColumnWidth(32, 15 * 256); // Kolom AG: KAPS_TOTAL_NORMAL_SHIFT
+            sheet.setColumnWidth(33, 15 * 256); // Kolom AH: KAPS_TOTAL_SHIFT_FRIDAY
+            sheet.setColumnWidth(34, 25 * 256); // Kolom AI: WAKTU_TOTAL_CT_NORMAL
+            sheet.setColumnWidth(35, 25 * 256); // Kolom AJ: WAKTU_TOTAL_CT_FRIDAY
+           
+
+            Sheet hiddenSheetMachineCuring = workbook.createSheet("HIDDEN_MACHINETASSS");
+            for (int i = 0; i < machineTassWCT.size(); i++) {
+                Row row = hiddenSheetMachineCuring.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(machineTassWCT.get(i));
+            }
+
+            Name namedRangeMachineCuring = workbook.createName();
+            namedRangeMachineCuring.setNameName("machineTassWCT");
+            namedRangeMachineCuring.setRefersToFormula("HIDDEN_MACHINETASSS!$A$1:$A$" + machineTassWCT.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetMachineCuring), true);
+
+            Sheet hiddenSheetItemAssy = workbook.createSheet("HIDDEN_ITEMASSYS");
+            for (int i = 0; i < itemAssyID.size(); i++) {
+                Row row = hiddenSheetItemAssy.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(itemAssyID.get(i));
+            }
+
+            Name namedRangeItemAssy = workbook.createName();
+            namedRangeItemAssy.setNameName("itemAssyID");
+            namedRangeItemAssy.setRefersToFormula("HIDDEN_ITEMASSYS!$A$1:$A$" + itemAssyID.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetItemAssy), true);
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+
+            DataValidationConstraint itemAssyTypeConstraint = validationHelper.createFormulaListConstraint("itemAssyID");
+            CellRangeAddressList itemAssyTypeAddressList = new CellRangeAddressList(3, 1000, 0, 0);
+            DataValidation itemAssyTypeValidation = validationHelper.createValidation(itemAssyTypeConstraint, itemAssyTypeAddressList);
+            itemAssyTypeValidation.setSuppressDropDownArrow(true);
+            itemAssyTypeValidation.setShowErrorBox(true);
+            sheet.addValidationData(itemAssyTypeValidation);
+
+            DataValidationConstraint machineTassWCTConstraint = validationHelper.createFormulaListConstraint("machineTassWCT");
+            CellRangeAddressList machineTassWCTAddressList = new CellRangeAddressList(3, 1000, 6, 6);
+            DataValidation machineTassWCTValidation = validationHelper.createValidation(machineTassWCTConstraint, machineTassWCTAddressList);
+            machineTassWCTValidation.setSuppressDropDownArrow(true);
+            machineTassWCTValidation.setShowErrorBox(true);
+            sheet.addValidationData(machineTassWCTValidation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export Quadrant data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
         }
     }
 }
