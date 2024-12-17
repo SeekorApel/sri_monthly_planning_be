@@ -363,8 +363,6 @@ public class MachineTassTypeController {
 			                            settingValue = String.valueOf((int) settingValueCell.getNumericCellValue());
 			                        } else if (settingValueCell.getCellType() == CellType.STRING) {
 			                            settingValue = settingValueCell.getStringCellValue();
-			                        } else {
-			                            continue;
 			                        }
 
 			                        Optional<Setting> settingOptional = settingRepo.findBySettingValue(settingValue);
@@ -374,15 +372,15 @@ public class MachineTassTypeController {
 			                            errorMessages.add("Data Tidak Valid, Data Setting pada Baris " + (i + 1) + " Tidak Ditemukan");
 			                            continue;
 			                        }
-
 			                            machineTassType.setMACHINETASSTYPE_ID(codeCell.getStringCellValue());
 			                            machineTassType.setSETTING_ID(settingOptional.get().getSETTING_ID());
 			                            machineTassType.setDESCRIPTION(descriptionCell.getStringCellValue());
 			                            machineTassType.setSTATUS(BigDecimal.valueOf(1));
 			                            machineTassType.setCREATION_DATE(new Date());
 			                            machineTassType.setLAST_UPDATE_DATE(new Date());
+			                            
+			                            machineTassTypes.add(machineTassType);
 
-			                        
 			                    }
 			                }
 
