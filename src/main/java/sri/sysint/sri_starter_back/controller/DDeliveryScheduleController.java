@@ -49,6 +49,7 @@ import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.DDeliverySchedule;
 import sri.sysint.sri_starter_back.model.DeliverySchedule;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.DeliveryScheduleRepo;
 import sri.sysint.sri_starter_back.service.DDeliveryScheduleServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -59,6 +60,8 @@ public class DDeliveryScheduleController {
 
     @Autowired
     private DDeliveryScheduleServiceImpl dDeliveryScheduleServiceImpl;
+    @Autowired
+    private DeliveryScheduleRepo deliveryScheduleRepo;
 
     @PersistenceContext    
     private EntityManager em;
@@ -330,7 +333,6 @@ public class DDeliveryScheduleController {
                     return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
                 }
 
-                dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
                 Response response;
 
                 try (InputStream inputStream = file.getInputStream();
@@ -338,6 +340,7 @@ public class DDeliveryScheduleController {
 
                     XSSFSheet sheet = workbook.getSheetAt(0);
                     List<DDeliverySchedule> dDeliverySchedules = new ArrayList<>();
+	                List<String> errorMessages = new ArrayList<>();
 
                     for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                         Row row = sheet.getRow(i);
@@ -349,11 +352,36 @@ public class DDeliveryScheduleController {
                             Cell dateDsCell = row.getCell(4);
                             Cell totalDeliveryCell = row.getCell(5);
 
-                            if (dsIdCell != null && partNumCell != null && dateDsCell != null && totalDeliveryCell != null) {
+	                        if (dsIdCell == null || dsIdCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (DetailDelivery Schedule ID)");
+	                            continue;
+	                        }
+
+	                        if (partNumCell == null || partNumCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Partnum)");
+	                            continue;
+	                        }
+                            if (dateDsCell == null || dateDsCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Date)");
+	                            continue;
+	                        }
+
+	                        if (totalDeliveryCell == null || totalDeliveryCell.getCellType() == CellType.BLANK) {
+	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Total Delivery)");
+	                            continue;
+	                        }
+	                        BigDecimal dsIdC;
+	                        try {
+	                            dsIdC = new BigDecimal(dsIdCell.toString());
+	                        } catch (NumberFormatException e) {
+	                            errorMessages.add(String.format("Row %d, Column 3 (DetailDelivery Schedule ID) has invalid format", i + 1));
+	                            continue;
+	                        }
+	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsIdC);
+                            if (deliveryScheduleOpt.isPresent()) {
                                 dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
 
-                                BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
-                                dDeliverySchedule.setDS_ID(dsId);
+                                dDeliverySchedule.setDS_ID(dsIdC);
 
                                 BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
                                 dDeliverySchedule.setPART_NUM(partNum);
@@ -384,29 +412,35 @@ public class DDeliveryScheduleController {
                                 dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
                                 dDeliverySchedule.setCREATION_DATE(new Date());
                                 dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
+                                dDeliverySchedules.add(dDeliverySchedule);
                             } else {
-                                continue; 
-                            }
-
-                            dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
-                            dDeliverySchedules.add(dDeliverySchedule);
+	                            errorMessages.add("Data Tidak Valid, Data Delivery Schedule pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        }
                         }
                     }
+                    if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+                    dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
+                    for(DDeliverySchedule dDeliverySchedule : dDeliverySchedules){
+                        dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
+                    }
 
-                    response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
+                    return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
 
                 } catch (IOException e) {
                     e.printStackTrace();
-                    response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
+                    return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
                 }
 
-                return response;
             } else {
                 throw new ResourceNotFoundException("User not found");
             }
-        } catch (Exception e) {
-            throw new ResourceNotFoundException("JWT token is not valid or expired");
-        }
+        } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+	    } catch (Exception e) {
+	        throw new ResourceNotFoundException("JWT token is not valid or expired");
+	    }
     }
 
     private Date getDateFromCell(Cell cell) throws ParseException {
@@ -438,6 +472,18 @@ public class DDeliveryScheduleController {
         String filename = "MASTER_DETAIL_DELIVERY_SCHEDULE.xlsx";
 
         ByteArrayInputStream data = dDeliveryScheduleServiceImpl.exportDDeliverySchedulesExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+
+    @GetMapping("/layoutDDeliveryScheduleExcel")
+    public ResponseEntity<InputStreamResource> layoutDDeliveryScheduleExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_DELIVERY_SCHEDULE.xlsx";
+        ByteArrayInputStream data = dDeliveryScheduleServiceImpl.layoutDDeliveryScheduleExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()
