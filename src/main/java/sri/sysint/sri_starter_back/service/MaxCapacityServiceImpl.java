@@ -255,13 +255,29 @@ public class MaxCapacityServiceImpl {
                 Cell maxCapIdCell = dataRow.createCell(1);
                 maxCapIdCell.setCellValue(m.getMAX_CAP_ID() != null ? m.getMAX_CAP_ID().doubleValue() : null);
                 maxCapIdCell.setCellStyle(borderStyle);
+                
+                BigDecimal partnumber = null;
+                if (m.getPRODUCT_ID() != null) {
+                    Product product = productRepo.findById(m.getPRODUCT_ID()).orElse(null);
+                    if (product != null) {
+                    	partnumber = product.getPART_NUMBER();
+                    }
+                }
+                
+                String machineCuringTypeid = null;
+                if (m.getMACHINECURINGTYPE_ID() != null) {
+                    MachineCuringType machineCuringType = machineCuringTypeRepo.findById(m.getMACHINECURINGTYPE_ID()).orElse(null);
+                    if (machineCuringType != null) {
+                    	machineCuringTypeid = machineCuringType.getMACHINECURINGTYPE_ID();
+                    }
+                }
 
                 Cell productIdCell = dataRow.createCell(2);
-                productIdCell.setCellValue("");
+                productIdCell.setCellValue(partnumber != null ? partnumber.doubleValue() : null);
                 productIdCell.setCellStyle(borderStyle);
 
                 Cell machineCuringTypeIdCell = dataRow.createCell(3);
-                machineCuringTypeIdCell.setCellValue("");
+                machineCuringTypeIdCell.setCellValue(machineCuringTypeid != null ? machineCuringTypeid : null);
                 machineCuringTypeIdCell.setCellStyle(borderStyle);
 
                 Cell cycleTimeCell = dataRow.createCell(4);

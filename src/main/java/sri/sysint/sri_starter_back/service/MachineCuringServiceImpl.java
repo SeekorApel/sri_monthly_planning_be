@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.MachineCuring;
 import sri.sysint.sri_starter_back.model.MachineCuringType;
+import sri.sysint.sri_starter_back.model.MachineTassType;
 import sri.sysint.sri_starter_back.repository.BuildingRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
@@ -247,16 +248,32 @@ public class MachineCuringServiceImpl {
                 workcentertextCell.setCellValue(mc.getWORK_CENTER_TEXT());
                 workcentertextCell.setCellStyle(borderStyle);
 
+                String buildingName = null;
+                if (mc.getBUILDING_ID() != null) {
+                    Building building = buildingRepo.findById(mc.getBUILDING_ID()).orElse(null);
+                    if (building != null) {
+                        buildingName = building.getBUILDING_NAME();
+                    }
+                }
+                
                 Cell buildingNameCell = dataRow.createCell(2);
-                buildingNameCell.setCellValue("");
+                buildingNameCell.setCellValue(buildingName != null ? buildingName : "");
                 buildingNameCell.setCellStyle(borderStyle);
 
                 Cell cavityCell = dataRow.createCell(3);
                 cavityCell.setCellValue(mc.getCAVITY().doubleValue());
                 cavityCell.setCellStyle(borderStyle);
 
+                String typeName = null;
+                if (mc.getMACHINE_TYPE() != null) {
+                    MachineCuringType type = machineCuringTypeRepo.findById(mc.getMACHINE_TYPE()).orElse(null);
+                    if (type != null) {
+                    	typeName = type.getMACHINECURINGTYPE_ID();
+                    }
+                }
+                
                 Cell machineTypeCell = dataRow.createCell(4);
-                machineTypeCell.setCellValue("");
+                machineTypeCell.setCellValue(typeName != null ? typeName : "");
                 machineTypeCell.setCellStyle(borderStyle);
 
                 Cell statusUsageCell = dataRow.createCell(5);
