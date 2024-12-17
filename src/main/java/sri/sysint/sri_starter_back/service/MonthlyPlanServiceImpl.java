@@ -162,8 +162,8 @@ public class MonthlyPlanServiceImpl {
 			for(MachineProduct mn : machineProductList) {
 	        	for(DetailMo dtMo : detailMarketingOrderListAB) {
 	        		if(dtMo.getPartNumber().equals(mn.getPART_NUMBER())) {
-	        			minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
-	        			order = dtMo.getMoMonth0();
+	        			minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
+	        			order = dtMo.getTotalAR();
 	        			tempShift = generateFromManualMapping(mn.getPART_NUMBER(), month, year, dtMo.getItemCuring(), mn.getWORK_CENTER_TEXT());
 	        			if(tempShift == true) {
 	        				dtMo.setMoMonth0(order);
@@ -172,8 +172,8 @@ public class MonthlyPlanServiceImpl {
 	        	}
 	        	for(DetailMo dtMo : detailMarketingOrderListDual) {
 	        		if(dtMo.getPartNumber().equals(mn.getPART_NUMBER())) {
-	        			order = dtMo.getMoMonth0();
-	        			minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+	        			order = dtMo.getTotalAR();
+	        			minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	        			tempShift = generateFromManualMapping(mn.getPART_NUMBER(), month, year, dtMo.getItemCuring(), mn.getWORK_CENTER_TEXT());
 	        			if(tempShift == true) {
 	        				dtMo.setMoMonth0(order);
@@ -182,8 +182,8 @@ public class MonthlyPlanServiceImpl {
 	        	}
 	        	for(DetailMo dtMo : detailMarketingOrderListBOM) {
 	        		if(dtMo.getPartNumber().equals(mn.getPART_NUMBER())) {
-	        			order = dtMo.getMoMonth0();
-	        			minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+	        			order = dtMo.getTotalAR();
+	        			minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	        			tempShift = generateFromManualMapping(mn.getPART_NUMBER(), month, year, dtMo.getItemCuring(), mn.getWORK_CENTER_TEXT());
 	        			if(tempShift == true) {
 	        				dtMo.setMoMonth0(order);
@@ -199,12 +199,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    			minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    			minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -231,12 +231,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    	    	minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    	    	minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -263,12 +263,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    	    	minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    	    	minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -298,9 +298,9 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -363,9 +363,9 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -429,9 +429,9 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -492,12 +492,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    			minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    			minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -524,12 +524,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    	    	minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    	    	minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -556,12 +556,12 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 3");
-		    order = dtMo.getMoMonth0();
+		    order = dtMo.getTotalAR();
 		   ////System.out.println("test 4");
     	    oldShiftPlan = shiftMonthlyRepo.findYesterdaysShiftPlan(formatDateToString(workDayList.get(0).getDATE_WD()), dtMo.getItemCuring());
     	   ////System.out.println("test 5");
     	    if (oldShiftPlan != null && !oldShiftPlan.isEmpty()) { // if 1
-    	    	minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+    	    	minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
     	    	while (order.intValue() > minProduction.intValue()) {
         	    ////System.out.println("test 6");
         	    	if(!checkAllActiveMachine()) {
@@ -591,9 +591,9 @@ public class MonthlyPlanServiceImpl {
 			tempShift = false;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -656,9 +656,9 @@ public class MonthlyPlanServiceImpl {
 			int statusPrioritasMesin = 0;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -722,9 +722,9 @@ public class MonthlyPlanServiceImpl {
 			int statusPrioritasMesin = 0;
             statusPrioritasMesin = getStatusPrioritasMesin(dtMo, smallOrderLimit);
            ////System.out.println("test 12");
-            order = dtMo.getMoMonth0();
+            order = dtMo.getTotalAR();
            ////System.out.println("test 13");
-            minProduction = getMinimalProduction(dtMo.getMoMonth0(), minA, minB, minC, minD);
+            minProduction = getMinimalProduction(dtMo.getTotalAR(), minA, minB, minC, minD);
 	    	while (order.intValue() > minProduction.intValue()) {
             ////System.out.println("test 14");
             	List<CTCuring> ctCurList = getMachine(statusPrioritasMesin, dtMo.getItemCuring());
@@ -784,22 +784,22 @@ public class MonthlyPlanServiceImpl {
 		}
 		System.out.println("ini ab doang");
 		for(DetailMo dtm : detailMarketingOrderListAB) {
-			if(dtm.getMoMonth0().intValue() > 0) {
-				System.out.println(dtm.getPartNumber() + " " + dtm.getMoMonth0());
+			if(dtm.getTotalAR().intValue() > 0) {
+				System.out.println(dtm.getPartNumber() + " " + dtm.getTotalAR());
 			}
 		}
 		
 		System.out.println("ini bom doang");
 		for(DetailMo dtm : detailMarketingOrderListBOM) {
-			if(dtm.getMoMonth0().intValue() > 0) {
-				System.out.println(dtm.getPartNumber() + " " + dtm.getMoMonth0());
+			if(dtm.getTotalAR().intValue() > 0) {
+				System.out.println(dtm.getPartNumber() + " " + dtm.getTotalAR());
 			}
 		}
 		
 		System.out.println("ini dual ");
 		for(DetailMo dtm : detailMarketingOrderListDual) {
-			if(dtm.getMoMonth0().intValue() > 0) {
-				System.out.println(dtm.getPartNumber() + " " + dtm.getMoMonth0());
+			if(dtm.getTotalAR().intValue() > 0) {
+				System.out.println(dtm.getPartNumber() + " " + dtm.getTotalAR());
 			}
 		}
 		
@@ -849,7 +849,7 @@ public class MonthlyPlanServiceImpl {
 	
 	public boolean checkMo() {
 		for(DetailMo dtMo : detailMarketingOrderList) {
-			if (dtMo.getMoMonth0().compareTo(dtMo.getProductionLimit()) > 0) {
+			if (dtMo.getTotalAR().compareTo(dtMo.getProductionLimit()) > 0) {
 				return true;
 			}
 		}
@@ -1181,13 +1181,9 @@ public class MonthlyPlanServiceImpl {
     	////System.out.println(machineCuringList.size());
     	workDayList = workDayRepo.findByMonthYear(month, year); //Flowchart 3
 		
-    	System.out.println("1");
-
     	smallOrderLimit = new BigDecimal(settingRepo.findSmallOrderLimit().getSETTING_VALUE());
     	
-		System.out.println("2");
     	List<MarketingOrder> marketingOrderList = marketingOrderRepo.findByMonthYear(month, year); //flowchart 4
-		System.out.println("3");
 
     	 //flowchart 5 6 7 8
     	////System.out.println("Done flow 5");
@@ -1525,7 +1521,7 @@ public class MonthlyPlanServiceImpl {
             return 22;
         }
     	
-        if (dtMo.getMoMonth0().compareTo(smallOrderLimit) <= 0) { // flowchart 15
+        if (dtMo.getTotalAR().compareTo(smallOrderLimit) <= 0) { // flowchart 15
             ////System.out.println("Done flow 14");
             return 32;
         }
@@ -1716,6 +1712,7 @@ public class MonthlyPlanServiceImpl {
         private BigDecimal ppd;
         private BigDecimal lowerConstant;
         private BigDecimal moMonth0;
+        private BigDecimal totalAR;
         private String productCategory;
         private String machineType;
         private String itemExt;
@@ -1798,7 +1795,13 @@ public class MonthlyPlanServiceImpl {
         public BigDecimal getMaxCapMonth0() { return maxCapMonth0; }
         public void setMaxCapMonth0(BigDecimal maxCapMonth0) { this.maxCapMonth0 = maxCapMonth0; }
         
-        public BigDecimal getProductionLimit() {
+        public BigDecimal getTotalAR() {
+			return totalAR;
+		}
+		public void setTotalAR(BigDecimal totalAR) {
+			this.totalAR = totalAR;
+		}
+		public BigDecimal getProductionLimit() {
 			return productionLimit;
 		}
 		public void setProductionLimit(BigDecimal productionLimit) {
@@ -1833,6 +1836,7 @@ public class MonthlyPlanServiceImpl {
                     ", productType='" + productType + '\'' +
                     ", partNumber='" + partNumber + '\'' +
                     ", upperConstant='" + upperConstant + '\'' +
+                    ", totalAR='" + totalAR + '\'' +
                     ", maxCapMonth0=" + maxCapMonth0 +
                     '}';
         }

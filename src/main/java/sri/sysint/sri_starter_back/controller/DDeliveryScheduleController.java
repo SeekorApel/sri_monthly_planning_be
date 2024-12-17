@@ -49,6 +49,8 @@ import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.DDeliverySchedule;
 import sri.sysint.sri_starter_back.model.DeliverySchedule;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.DDeliveryScheduleRepo;
+import sri.sysint.sri_starter_back.repository.DeliveryScheduleRepo;
 import sri.sysint.sri_starter_back.service.DDeliveryScheduleServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -59,6 +61,9 @@ public class DDeliveryScheduleController {
 
     @Autowired
     private DDeliveryScheduleServiceImpl dDeliveryScheduleServiceImpl;
+    
+    @Autowired
+    private DeliveryScheduleRepo deliveryScheduleRepo;
 
     @PersistenceContext    
     private EntityManager em;
@@ -310,132 +315,132 @@ public class DDeliveryScheduleController {
     }
 
     @PostMapping("/saveDDeliverySchedulesExcel")
-    public Response saveDDeliverySchedulesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-        String header = req.getHeader("Authorization");
-
-        if (header == null || !header.startsWith("Bearer ")) {
-            throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-        }
-
-        String token = header.replace("Bearer ", "");
-
-        try {
-            String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-                .build()
-                .verify(token)
-                .getSubject();
-
-            if (user != null) {
-                if (file.isEmpty()) {
-                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
-                }
-
-                Response response;
-
-                try (InputStream inputStream = file.getInputStream();
-                     XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
-
-                    XSSFSheet sheet = workbook.getSheetAt(0);
-                    List<DDeliverySchedule> dDeliverySchedules = new ArrayList<>();
-	                List<String> errorMessages = new ArrayList<>();
-
-                    for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                        Row row = sheet.getRow(i);
-                        if (row != null) {
-                            DDeliverySchedule dDeliverySchedule = new DDeliverySchedule();
-
-                            Cell dsIdCell = row.getCell(2);
-                            Cell partNumCell = row.getCell(3);
-                            Cell dateDsCell = row.getCell(4);
-                            Cell totalDeliveryCell = row.getCell(5);
-
-	                        if (dsIdCell == null || dsIdCell.getCellType() == CellType.BLANK) {
-	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (DetailDelivery Schedule ID)");
-	                            continue;
-	                        }
-
-	                        if (partNumCell == null || partNumCell.getCellType() == CellType.BLANK) {
-	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Partnum)");
-	                            continue;
-	                        }
-                            if (dateDsCell == null || dateDsCell.getCellType() == CellType.BLANK) {
-	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Date)");
-	                            continue;
-	                        }
-
-	                        if (totalDeliveryCell == null || totalDeliveryCell.getCellType() == CellType.BLANK) {
-	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Total Delivery)");
-	                            continue;
-	                        }
-                            String dsId = dsIdCell.getStringCellValue();
-
-	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsId);
-
-                            if (deliveryScheduleOpt.isPresent()) {
-                                dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
-
-                                BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
-                                dDeliverySchedule.setDS_ID(dsId);
-
-                                BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
-                                dDeliverySchedule.setPART_NUM(partNum);
-
-                                try {
-                                    Date dateDs;
-                                    if (dateDsCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateDsCell)) {
-                                        dateDs = dateDsCell.getDateCellValue();
-                                    } else if (dateDsCell.getCellType() == CellType.STRING) {
-                                        // Parse string date if formatted as text
-                                        String dateString = dateDsCell.getStringCellValue();
-                                        LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
-                                        dateDs = Date.from(localDate.atStartOfDay(ZoneId.of("UTC")).toInstant());
-                                    } else {
-                                        continue; // Skip if date format is unrecognized
-                                    }
-
-                                    dDeliverySchedule.setDATE_DS(dateDs);
-
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                    continue;
-                                }
-
-                                BigDecimal totalDelivery = BigDecimal.valueOf(totalDeliveryCell.getNumericCellValue());
-                                dDeliverySchedule.setTOTAL_DELIVERY(totalDelivery);
-
-                                dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
-                                dDeliverySchedule.setCREATION_DATE(new Date());
-                                dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
-                                dDeliverySchedules.add(dDeliverySchedule);
-                            } else {
-	                            errorMessages.add("Data Tidak Valid, Data Delivery Schedule pada Baris " + (i + 1) + " Tidak Ditemukan");
-	                        }
-                        }
-                    }
-                    if (!errorMessages.isEmpty()) {
-	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
-	                }
-                    dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
-                    for(DDeliverySchedule dDeliverySchedule : dDeliverySchedules){
-                        dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
-                    }
-
-                    return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
-                }
-
-            } else {
-                throw new ResourceNotFoundException("User not found");
-            }
-        } catch (IllegalArgumentException e) {
-	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
-	    } catch (Exception e) {
-	        throw new ResourceNotFoundException("JWT token is not valid or expired");
-	    }
-    }
+//    public Response saveDDeliverySchedulesExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
+//        String header = req.getHeader("Authorization");
+//
+//        if (header == null || !header.startsWith("Bearer ")) {
+//            throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+//        }
+//
+//        String token = header.replace("Bearer ", "");
+//
+//        try {
+//            String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+//                .build()
+//                .verify(token)
+//                .getSubject();
+//
+//            if (user != null) {
+//                if (file.isEmpty()) {
+//                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+//                }
+//
+//                Response response;
+//
+//                try (InputStream inputStream = file.getInputStream();
+//                     XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
+//
+//                    XSSFSheet sheet = workbook.getSheetAt(0);
+//                    List<DDeliverySchedule> dDeliverySchedules = new ArrayList<>();
+//	                List<String> errorMessages = new ArrayList<>();
+//
+//                    for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+//                        Row row = sheet.getRow(i);
+//                        if (row != null) {
+//                            DDeliverySchedule dDeliverySchedule = new DDeliverySchedule();
+//
+//                            Cell dsIdCell = row.getCell(2);
+//                            Cell partNumCell = row.getCell(3);
+//                            Cell dateDsCell = row.getCell(4);
+//                            Cell totalDeliveryCell = row.getCell(5);
+//
+//	                        if (dsIdCell == null || dsIdCell.getCellType() == CellType.BLANK) {
+//	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 3 (DetailDelivery Schedule ID)");
+//	                            continue;
+//	                        }
+//
+//	                        if (partNumCell == null || partNumCell.getCellType() == CellType.BLANK) {
+//	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 4 (Partnum)");
+//	                            continue;
+//	                        }
+//                            if (dateDsCell == null || dateDsCell.getCellType() == CellType.BLANK) {
+//	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 5 (Date)");
+//	                            continue;
+//	                        }
+//
+//	                        if (totalDeliveryCell == null || totalDeliveryCell.getCellType() == CellType.BLANK) {
+//	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Total Delivery)");
+//	                            continue;
+//	                        }
+//                            String dsId = dsIdCell.getStringCellValue();
+//
+//	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsId);
+//
+//                            if (deliveryScheduleOpt.isPresent()) {
+//                                dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
+//
+//                                BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
+//                                dDeliverySchedule.setDS_ID(dsId);
+//
+//                                BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
+//                                dDeliverySchedule.setPART_NUM(partNum);
+//
+//                                try {
+//                                    Date dateDs;
+//                                    if (dateDsCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateDsCell)) {
+//                                        dateDs = dateDsCell.getDateCellValue();
+//                                    } else if (dateDsCell.getCellType() == CellType.STRING) {
+//                                        // Parse string date if formatted as text
+//                                        String dateString = dateDsCell.getStringCellValue();
+//                                        LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
+//                                        dateDs = Date.from(localDate.atStartOfDay(ZoneId.of("UTC")).toInstant());
+//                                    } else {
+//                                        continue; // Skip if date format is unrecognized
+//                                    }
+//
+//                                    dDeliverySchedule.setDATE_DS(dateDs);
+//
+//                                } catch (Exception e) {
+//                                    e.printStackTrace();
+//                                    continue;
+//                                }
+//
+//                                BigDecimal totalDelivery = BigDecimal.valueOf(totalDeliveryCell.getNumericCellValue());
+//                                dDeliverySchedule.setTOTAL_DELIVERY(totalDelivery);
+//
+//                                dDeliverySchedule.setSTATUS(BigDecimal.valueOf(1));
+//                                dDeliverySchedule.setCREATION_DATE(new Date());
+//                                dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
+//                                dDeliverySchedules.add(dDeliverySchedule);
+//                            } else {
+//	                            errorMessages.add("Data Tidak Valid, Data Delivery Schedule pada Baris " + (i + 1) + " Tidak Ditemukan");
+//	                        }
+//                        }
+//                    }
+//                    if (!errorMessages.isEmpty()) {
+//	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+//	                }
+//                    dDeliveryScheduleServiceImpl.deleteAllDDeliverySchedule();
+//                    for(DDeliverySchedule dDeliverySchedule : dDeliverySchedules){
+//                        dDeliveryScheduleServiceImpl.saveDDeliverySchedule(dDeliverySchedule);
+//                    }
+//
+//                    return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), dDeliverySchedules);
+//
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                    return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file: " + e.getMessage(), req.getRequestURI(), null);
+//                }
+//
+//            } else {
+//                throw new ResourceNotFoundException("User not found");
+//            }
+//        } catch (IllegalArgumentException e) {
+//	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+//	    } catch (Exception e) {
+//	        throw new ResourceNotFoundException("JWT token is not valid or expired");
+//	    }
+//    }
 
     private Date getDateFromCell(Cell cell) throws ParseException {
         if (cell == null) {

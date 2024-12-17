@@ -97,6 +97,9 @@ public class DetailMarketingOrder {
 	@Column(name = "REJECT")
 	private BigDecimal reject;
 	
+	@Column(name = "TOTAL_AR")
+	private BigDecimal totalAr;
+	
 	@Column(name = "STATUS")
 	private BigDecimal status;
 	
@@ -141,6 +144,7 @@ public class DetailMarketingOrder {
 	    this.ar = detailMarketingOrder.getAr();
 	    this.defect = detailMarketingOrder.getDefect();
 	    this.reject = detailMarketingOrder.getReject();
+	    this.totalAr = detailMarketingOrder.getTotalAr();
 	    this.status = detailMarketingOrder.getStatus();
 	    this.creationDate = detailMarketingOrder.getCreationDate();
 	    this.createdBy = detailMarketingOrder.getCreatedBy();
@@ -149,6 +153,15 @@ public class DetailMarketingOrder {
 	}
 
 	public DetailMarketingOrder() {}
+
+	
+	public BigDecimal getTotalAr() {
+		return totalAr;
+	}
+
+	public void setTotalAr(BigDecimal totalAr) {
+		this.totalAr = totalAr;
+	}
 
 	public BigDecimal getDetailId() {
 		return detailId;
