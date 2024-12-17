@@ -173,6 +173,7 @@ public class MarketingOrderServiceImpl {
             detailMo.setLockStatusM0(data.getLockStatusM0());
             detailMo.setLockStatusM1(data.getLockStatusM1());
             detailMo.setLockStatusM2(data.getLockStatusM2());
+            detailMo.setTotalAr(data.getTotalAr());
             detailMo.setAr(data.getAr());
             detailMo.setDefect(data.getDefect());
             detailMo.setReject(data.getReject());
@@ -280,10 +281,10 @@ public class MarketingOrderServiceImpl {
         	dataMarketingFed.setMoId(moIdFed);
 		}
 		
-        if (dataMarketingFed.getRevisionMarketing() == null) {
-        	dataMarketingFed.setRevisionMarketing(BigDecimal.ONE); // Jika null atau 0, set ke 1
+        if (dataMarketingFed.getRevisionPpc() == null) {
+        	dataMarketingFed.setRevisionPpc(BigDecimal.ONE); // Jika null atau 0, set ke 1
         } else {
-        	dataMarketingFed.setRevisionMarketing(dataMarketingFed.getRevisionMarketing().add(BigDecimal.ONE)); // Tambah 1 pada revisi
+        	dataMarketingFed.setRevisionPpc(dataMarketingFed.getRevisionPpc().add(BigDecimal.ONE)); // Tambah 1 pada revisi
         }
         	        
         marketingOrderRepo.save(dataMarketingFed);
@@ -339,6 +340,7 @@ public class MarketingOrderServiceImpl {
             detailMo.setLockStatusM0(data.getLockStatusM0());
             detailMo.setLockStatusM1(data.getLockStatusM1());
             detailMo.setLockStatusM2(data.getLockStatusM2());
+            detailMo.setTotalAr(data.getTotalAr());
             detailMo.setAr(data.getAr());
             detailMo.setDefect(data.getDefect());
             detailMo.setReject(data.getReject());
@@ -446,10 +448,10 @@ public class MarketingOrderServiceImpl {
         	dataMarketingFdr.setMoId(moIdFdr);
 		}
 		
-        if (dataMarketingFdr.getRevisionMarketing() == null) {
-        	dataMarketingFdr.setRevisionMarketing(BigDecimal.ONE); // Jika null atau 0, set ke 1
+        if (dataMarketingFdr.getRevisionPpc() == null) {
+        	dataMarketingFdr.setRevisionPpc(BigDecimal.ONE);// Jika null atau 0, set ke 1
         } else {
-        	dataMarketingFdr.setRevisionMarketing(dataMarketingFdr.getRevisionMarketing().add(BigDecimal.ONE)); // Tambah 1 pada revisi
+        	dataMarketingFdr.setRevisionPpc(dataMarketingFdr.getRevisionPpc().add(BigDecimal.ONE)); // Tambah 1 pada revisi
         }
         	        
         marketingOrderRepo.save(dataMarketingFdr);
