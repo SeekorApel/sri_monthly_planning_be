@@ -49,6 +49,7 @@ import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.DDeliverySchedule;
 import sri.sysint.sri_starter_back.model.DeliverySchedule;
 import sri.sysint.sri_starter_back.model.Response;
+import sri.sysint.sri_starter_back.repository.DeliveryScheduleRepo;
 import sri.sysint.sri_starter_back.service.DDeliveryScheduleServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
@@ -59,6 +60,8 @@ public class DDeliveryScheduleController {
 
     @Autowired
     private DDeliveryScheduleServiceImpl dDeliveryScheduleServiceImpl;
+    @Autowired
+    private DeliveryScheduleRepo deliveryScheduleRepo;
 
     @PersistenceContext    
     private EntityManager em;
@@ -367,15 +370,19 @@ public class DDeliveryScheduleController {
 	                            errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom 6 (Total Delivery)");
 	                            continue;
 	                        }
-                            String dsId = dsIdCell.getStringCellValue();
-
-	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsId);
-
+	                        BigDecimal dsIdC;
+	                        try {
+	                            dsIdC = new BigDecimal(dsIdCell.toString());
+	                        } catch (NumberFormatException e) {
+	                            errorMessages.add(String.format("Row %d, Column 3 (DetailDelivery Schedule ID) has invalid format", i + 1));
+	                            continue;
+	                        }
+	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsIdC);
                             if (deliveryScheduleOpt.isPresent()) {
+                                System.out.println(dsIdC+" ada");
                                 dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
 
-                                BigDecimal dsId = BigDecimal.valueOf(dsIdCell.getNumericCellValue());
-                                dDeliverySchedule.setDS_ID(dsId);
+                                dDeliverySchedule.setDS_ID(dsIdC);
 
                                 BigDecimal partNum = BigDecimal.valueOf(partNumCell.getNumericCellValue());
                                 dDeliverySchedule.setPART_NUM(partNum);
@@ -408,6 +415,7 @@ public class DDeliveryScheduleController {
                                 dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
                                 dDeliverySchedules.add(dDeliverySchedule);
                             } else {
+                                System.out.println(dsIdC+" tidak ada");
 	                            errorMessages.add("Data Tidak Valid, Data Delivery Schedule pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
                         }
