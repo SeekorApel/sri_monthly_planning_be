@@ -56,8 +56,8 @@ public class CuringSizeController {
 	private Response response;	
 	@Autowired
     private MachineCuringTypeRepo machineCuringTypeRepo;
-    @Autowired
-    private SizeRepo sizeRepo;
+	@Autowired
+	private SizeRepo sizeRepo;
 	@Autowired
 	private CuringSizeServiceImpl curingSizeServiceImpl;
 	
@@ -363,31 +363,35 @@ public class CuringSizeController {
 	                        
 	                        Optional<MachineCuringType> machineCuringTypeOpt = machineCuringTypeRepo.findById(machineCuringTypeIdCell.getStringCellValue());
 	                        Optional<Size> sizeOpt = sizeRepo.findById(sizeIdCell.getStringCellValue());
-	                        if (machineCuringTypeOpt.isPresent() && sizeOpt.isPresent()) {
-	                        	curingSize.setCURINGSIZE_ID(curingSizeServiceImpl.getNewId());
-		                        curingSize.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
-		                        
-		                        if (sizeIdCell != null) {
-		                            if (sizeIdCell.getCellType() == CellType.STRING) {
-		                                curingSize.setSIZE_ID(sizeIdCell.getStringCellValue());
-		                            } else if (sizeIdCell.getCellType() == CellType.NUMERIC) {
-		                                curingSize.setSIZE_ID(String.valueOf(sizeIdCell.getNumericCellValue()));
-		                            }
-		                        }
-		                        
-		                        curingSize.setCAPACITY(BigDecimal.valueOf(capacityCell.getNumericCellValue()));
-		                        curingSize.setSTATUS(BigDecimal.valueOf(1));
-		                        curingSize.setCREATION_DATE(new Date());
-		                        curingSize.setLAST_UPDATE_DATE(new Date());
 
-		                        curingSizes.add(curingSize);
-	                        } else if(!machineCuringTypeOpt.isPresent()) {
-	                            errorMessages.add("Data Tidak Valid, Data Machine Curing Type pada Baris " + (i + 1) + " Tidak Ditemukan");
-	                        } else if(!sizeOpt.isPresent()) {
-	                        	errorMessages.add("Data Tidak Valid, Data Size Type pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        if (machineCuringTypeOpt.isPresent()) {
+	                            curingSize.setCURINGSIZE_ID(curingSizeServiceImpl.getNewId());
+	                            curingSize.setMACHINECURINGTYPE_ID(machineCuringTypeIdCell.getStringCellValue());
 	                        } else {
-	                        	errorMessages.add("Data Tidak Valid, pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                            errorMessages.add("Data Tidak Valid, Data Machine Curing Type pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
+
+	                        if (sizeOpt.isPresent()) {
+	                            if (sizeIdCell != null) {
+	                                if (sizeIdCell.getCellType() == CellType.STRING) {
+	                                    curingSize.setSIZE_ID(sizeIdCell.getStringCellValue());
+	                                } else if (sizeIdCell.getCellType() == CellType.NUMERIC) {
+	                                    curingSize.setSIZE_ID(String.valueOf(sizeIdCell.getNumericCellValue()));
+	                                }
+	                            }
+	                        } else {
+	                            errorMessages.add("Data Tidak Valid, Data Size pada Baris " + (i + 1) + " Tidak Ditemukan");
+	                        }
+
+	                        if (machineCuringTypeOpt.isPresent() && sizeOpt.isPresent()) {
+	                            curingSize.setCAPACITY(BigDecimal.valueOf(capacityCell.getNumericCellValue()));
+	                            curingSize.setSTATUS(BigDecimal.valueOf(1));
+	                            curingSize.setCREATION_DATE(new Date());
+	                            curingSize.setLAST_UPDATE_DATE(new Date());
+
+	                            curingSizes.add(curingSize);
+	                        }
+
 
 	                    }
 	                }

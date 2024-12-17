@@ -30,8 +30,9 @@ import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.CuringSize;
-import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.model.Size;
+
+import sri.sysint.sri_starter_back.model.MachineCuringType;
 import sri.sysint.sri_starter_back.repository.CuringSizeRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
 import sri.sysint.sri_starter_back.repository.SizeRepo;
@@ -39,15 +40,12 @@ import sri.sysint.sri_starter_back.repository.SizeRepo;
 @Service
 @Transactional
 public class CuringSizeServiceImpl {
-    
 	@Autowired
     private CuringSizeRepo curingSizeRepo;
-
-    @Autowired
-    private SizeRepo sizeRepo;
-
 	@Autowired
     private MachineCuringTypeRepo machineCuringTypeRepo;
+	@Autowired
+    private SizeRepo sizeRepo;
 	
     public CuringSizeServiceImpl(CuringSizeRepo curingSizeRepo){
         this.curingSizeRepo = curingSizeRepo;
@@ -177,9 +175,9 @@ public class CuringSizeServiceImpl {
             List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive().stream()
                 .map(MachineCuringType::getMACHINECURINGTYPE_ID)  
                 .collect(Collectors.toList());
-            List<Size> activeSizes = sizeRepo.findSizeActive();
-            List<String> sizeIDs = activeSizes.stream()
-                .map(Size::getSIZE_ID)
+
+            List<String> sizes = sizeRepo.findSizeActive().stream()
+                .map(Size::getSIZE_ID)  
                 .collect(Collectors.toList());
 
             Sheet sheet = workbook.createSheet("CURING SIZE DATA");
@@ -222,24 +220,23 @@ public class CuringSizeServiceImpl {
                 cell.setCellValue(machineCuringTypes.get(i));
             }
 
-            Name namedRange = workbook.createName();
-            namedRange.setNameName("MachineCuringTypes");
-            namedRange.setRefersToFormula("HIDDEN_MACHINE_CURING_TYPES!$A$1:$A$" + machineCuringTypes.size());
+            Name namedRangeMachineCuringTypes = workbook.createName();
+            namedRangeMachineCuringTypes.setNameName("MachineCuringTypes");
+            namedRangeMachineCuringTypes.setRefersToFormula("HIDDEN_MACHINE_CURING_TYPES!$A$1:$A$" + machineCuringTypes.size());
 
-            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
-            
-            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
-            for (int i = 0; i < sizeIDs.size(); i++) {
-                Row row = hiddenSheetSize.createRow(i);
+            Sheet hiddenSheetSizes = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizes.size(); i++) {
+                Row row = hiddenSheetSizes.createRow(i);
                 Cell cell = row.createCell(0);
-                cell.setCellValue(sizeIDs.get(i));
+                cell.setCellValue(sizes.get(i));
             }
 
-            Name namedRangeSize = workbook.createName();
-            namedRangeSize.setNameName("sizeIDs");
-            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizeIDs.size());
+            Name namedRangeSizes = workbook.createName();
+            namedRangeSizes.setNameName("Sizes");
+            namedRangeSizes.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizes.size());
 
-            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSizes), true);
 
             int rowIndex = 1;
             for (CuringSize cs : curingSizes) {
@@ -256,20 +253,19 @@ public class CuringSizeServiceImpl {
                 Cell machineCuringTypeCell = dataRow.createCell(2);
                 machineCuringTypeCell.setCellStyle(borderStyle);
 
-                // Check if the value exists in the list of machineCuringTypes
                 String machineCuringType = cs.getMACHINECURINGTYPE_ID() != null 
                     ? cs.getMACHINECURINGTYPE_ID().toString() 
                     : "";
-                
+
                 if (machineCuringTypes.contains(machineCuringType)) {
                     machineCuringTypeCell.setCellValue(machineCuringType);
                 } else {
-                    machineCuringTypeCell.setCellValue(""); // Set empty if no match
+                    machineCuringTypeCell.setCellValue("");
                 }
 
                 Cell sizeCell = dataRow.createCell(3);
-                sizeCell.setCellValue(cs.getSIZE_ID() != null ? cs.getSIZE_ID().toString() : "");
                 sizeCell.setCellStyle(borderStyle);
+                sizeCell.setCellValue(cs.getSIZE_ID() != null ? cs.getSIZE_ID().toString() : "");
 
                 Cell capacityCell = dataRow.createCell(4);
                 capacityCell.setCellValue(cs.getCAPACITY() != null ? cs.getCAPACITY().doubleValue() : 0);
@@ -277,20 +273,19 @@ public class CuringSizeServiceImpl {
             }
 
             DataValidationHelper validationHelper = sheet.getDataValidationHelper();
-            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("MachineCuringTypes");
-            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
-            DataValidation validation = validationHelper.createValidation(constraint, addressList);
-            validation.setSuppressDropDownArrow(true);
-            validation.setShowErrorBox(true);
-            sheet.addValidationData(validation);
-            
-            DataValidationConstraint sizeConstraint = validationHelper.createFormulaListConstraint("sizeIDs");
-            CellRangeAddressList sizeAddressList = new CellRangeAddressList(1, 1000, 3, 3);
-            DataValidation sizeValidation = validationHelper.createValidation(sizeConstraint, sizeAddressList);
-            sizeValidation.setSuppressDropDownArrow(true);
-            sizeValidation.setShowErrorBox(true);
-            sheet.addValidationData(sizeValidation);
+            DataValidationConstraint constraintMachineCuringTypes = validationHelper.createFormulaListConstraint("MachineCuringTypes");
+            CellRangeAddressList addressListMachineCuringTypes = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validationMachineCuringTypes = validationHelper.createValidation(constraintMachineCuringTypes, addressListMachineCuringTypes);
+            validationMachineCuringTypes.setSuppressDropDownArrow(true);
+            validationMachineCuringTypes.setShowErrorBox(true);
+            sheet.addValidationData(validationMachineCuringTypes);
 
+            DataValidationConstraint constraintSizes = validationHelper.createFormulaListConstraint("Sizes");
+            CellRangeAddressList addressListSizes = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validationSizes = validationHelper.createValidation(constraintSizes, addressListSizes);
+            validationSizes.setSuppressDropDownArrow(true);
+            validationSizes.setShowErrorBox(true);
+            sheet.addValidationData(validationSizes);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
@@ -325,9 +320,9 @@ public class CuringSizeServiceImpl {
             List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive().stream()
                 .map(MachineCuringType::getMACHINECURINGTYPE_ID)  
                 .collect(Collectors.toList());
-            List<Size> activeSizes = sizeRepo.findSizeActive();
-            List<String> sizeIDs = activeSizes.stream()
-                .map(Size::getSIZE_ID)
+
+            List<String> sizes = sizeRepo.findSizeActive().stream()
+                .map(Size::getSIZE_ID)  
                 .collect(Collectors.toList());
 
             Sheet sheet = workbook.createSheet("CURING SIZE DATA");
@@ -370,12 +365,26 @@ public class CuringSizeServiceImpl {
                 cell.setCellValue(machineCuringTypes.get(i));
             }
 
-            Name namedRange = workbook.createName();
-            namedRange.setNameName("MachineCuringTypes");
-            namedRange.setRefersToFormula("HIDDEN_MACHINE_CURING_TYPES!$A$1:$A$" + machineCuringTypes.size());
+            Name namedRangeMachineCuringTypes = workbook.createName();
+            namedRangeMachineCuringTypes.setNameName("MachineCuringTypes");
+            namedRangeMachineCuringTypes.setRefersToFormula("HIDDEN_MACHINE_CURING_TYPES!$A$1:$A$" + machineCuringTypes.size());
+
+            Sheet hiddenSheetSizes = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizes.size(); i++) {
+                Row row = hiddenSheetSizes.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(sizes.get(i));
+            }
+
+            Name namedRangeSizes = workbook.createName();
+            namedRangeSizes.setNameName("Sizes");
+            namedRangeSizes.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizes.size());
 
             workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSizes), true);
 
+            int rowIndex = 1;
+            
             for (int i = 1; i <= 5; i++) {
                 Row dataRow = sheet.createRow(i);
                 for (int j = 0; j < header.length; j++) {
@@ -384,33 +393,20 @@ public class CuringSizeServiceImpl {
                 }
             }
 
-            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
-            for (int i = 0; i < sizeIDs.size(); i++) {
-                Row row = hiddenSheetSize.createRow(i);
-                Cell cell = row.createCell(0);
-                cell.setCellValue(sizeIDs.get(i));
-            }
-
-            Name namedRangeSize = workbook.createName();
-            namedRangeSize.setNameName("sizeIDs");
-            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizeIDs.size());
-
-            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
-            
             DataValidationHelper validationHelper = sheet.getDataValidationHelper();
-            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("MachineCuringTypes");
-            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
-            DataValidation validation = validationHelper.createValidation(constraint, addressList);
-            validation.setSuppressDropDownArrow(true);
-            validation.setShowErrorBox(true);
-            sheet.addValidationData(validation);
+            DataValidationConstraint constraintMachineCuringTypes = validationHelper.createFormulaListConstraint("MachineCuringTypes");
+            CellRangeAddressList addressListMachineCuringTypes = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validationMachineCuringTypes = validationHelper.createValidation(constraintMachineCuringTypes, addressListMachineCuringTypes);
+            validationMachineCuringTypes.setSuppressDropDownArrow(true);
+            validationMachineCuringTypes.setShowErrorBox(true);
+            sheet.addValidationData(validationMachineCuringTypes);
 
-            DataValidationConstraint sizeConstraint = validationHelper.createFormulaListConstraint("sizeIDs");
-            CellRangeAddressList sizeAddressList = new CellRangeAddressList(1, 1000, 3, 3);
-            DataValidation sizeValidation = validationHelper.createValidation(sizeConstraint, sizeAddressList);
-            sizeValidation.setSuppressDropDownArrow(true);
-            sizeValidation.setShowErrorBox(true);
-            sheet.addValidationData(sizeValidation);
+            DataValidationConstraint constraintSizes = validationHelper.createFormulaListConstraint("Sizes");
+            CellRangeAddressList addressListSizes = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation validationSizes = validationHelper.createValidation(constraintSizes, addressListSizes);
+            validationSizes.setSuppressDropDownArrow(true);
+            validationSizes.setShowErrorBox(true);
+            sheet.addValidationData(validationSizes);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
