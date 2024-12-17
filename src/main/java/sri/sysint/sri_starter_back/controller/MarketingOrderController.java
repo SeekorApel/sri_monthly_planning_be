@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -42,16 +43,21 @@ import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.DetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.HeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.MarketingOrder;
+import sri.sysint.sri_starter_back.model.MonthlyPlan;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.model.WorkDay;
 import sri.sysint.sri_starter_back.model.transaksi.EditMarketingOrderMarketing;
 import sri.sysint.sri_starter_back.model.transaksi.GetAllTypeMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveFinalMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
+import sri.sysint.sri_starter_back.model.transaksi.ViewMonthlyPlanning;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewDetailShiftMonthlyPlan;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewMachineCuring;
 import sri.sysint.sri_starter_back.model.view.ViewMarketingOrder;
 import sri.sysint.sri_starter_back.service.MarketingOrderServiceImpl;
+import sri.sysint.sri_starter_back.service.MonthlyPlanServiceImpl;
 
 @CrossOrigin(maxAge = 3600)
 @RestController
@@ -61,6 +67,10 @@ public class MarketingOrderController {
 	
 	@Autowired
 	private MarketingOrderServiceImpl marketingOrderServiceImpl;
+	
+	@Autowired
+	private MonthlyPlanServiceImpl monthlyPlanServiceImpl;
+	
 	
 	@PersistenceContext	
 	private EntityManager em;
@@ -378,6 +388,109 @@ public class MarketingOrderController {
 		    String filename = "MO_FED " + "- " + MOmonth + " R" + marketingOrder.getRevisionPpc().toString() + ".xlsx";
 		    
 		    ByteArrayInputStream data = marketingOrderServiceImpl.exportMOExcel(id);
+		    InputStreamResource file = new InputStreamResource(data);
+		    
+		    return ResponseEntity.ok()
+		        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+		        .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+		        .body(file);
+		}
+	    
+	    
+	    //------------------------------------------MONTHLY PLANNING-------------------------------------
+	    
+	    
+	    @GetMapping("/getAllMonthlyPlanning")
+	    public Response getAllMonthlyPlanning(final HttpServletRequest req) throws ResourceNotFoundException {
+
+	    	List <MonthlyPlan> data = marketingOrderServiceImpl.getAllMp();
+	    	response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	    	return response;
+	    }
+	    
+	    @GetMapping("/getMachineByItemCuring")
+	    public Response getMachineByItemCuring(@RequestParam("itemCuring") String itemCuring, final HttpServletRequest req) throws ResourceNotFoundException {
+	        
+	        List<ViewMachineCuring> data = marketingOrderServiceImpl.getMachinesByItemCuring(itemCuring);
+	        
+	        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	        
+	        return response;
+	    }
+	    
+	    @GetMapping("/getDetailMonthlyPlan")
+	    public Response getMonthlyPlan( final HttpServletRequest req) throws ResourceNotFoundException {
+	        
+	    	ViewMonthlyPlanning data = marketingOrderServiceImpl.getDetailMonthlyPlan();
+	        
+	        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	        
+	        return response;
+	    }
+	    
+	    @GetMapping("/getDetailMonthlyPlanById/{docNum}")
+	    public Response getDetailMonthlyPlanById(  @PathVariable String docNum, final HttpServletRequest req) throws ResourceNotFoundException {
+	        
+	    	ViewMonthlyPlanning data = marketingOrderServiceImpl.getDetailMonthlyPlanById(docNum);
+	        
+	        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	        
+	        return response;
+	    }
+
+	    @GetMapping("/getDetailShiftMonthlyPlan")
+	    public Response getDetailShiftMonthlyPlan(@RequestParam("detailDailyId") BigDecimal detailDailyId,
+	            @RequestParam("actualDate") @DateTimeFormat(pattern = "dd-MM-yyyy") Date actualDate, final HttpServletRequest req) throws ResourceNotFoundException {
+	        
+	    	List <ViewDetailShiftMonthlyPlan> data = marketingOrderServiceImpl.getShiftMonthlyPlan(actualDate, detailDailyId);
+	        
+	        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	        
+	        return response;
+	    }
+	    
+//	    @GetMapping("/generateMp")
+//	    public Response generateMP() throws ResourceNotFoundException {
+//	    	List<ShiftMonthlyPlan> marketingOrder = monthlyPlanServiceImpl.MonthlyPlan(11, 2024, new BigDecimal(5), 4);
+//	    	
+//	        if (marketingOrder == null) {
+//	            return null; 
+//	        }
+//
+//	        response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), null, marketingOrder);
+//	        return response;
+//	    }
+//	    
+	    
+	    @GetMapping("/generateDetailMp")
+	    public Response getMonthlyPlan( 
+	    		@RequestParam int month,
+	            @RequestParam int year,
+	            @RequestParam int limitChange, 
+	            @RequestParam BigDecimal minA, @RequestParam BigDecimal maxA,
+	            @RequestParam BigDecimal minB, @RequestParam BigDecimal maxB,
+	            @RequestParam BigDecimal minC, @RequestParam BigDecimal maxC,
+	            @RequestParam BigDecimal minD, @RequestParam BigDecimal maxD,
+	            final HttpServletRequest req) throws ResourceNotFoundException {
+	    	
+	    	ViewMonthlyPlanning data = monthlyPlanServiceImpl.getDetailMonthlyPlan(month, year, limitChange, minA, maxA, minB, maxB, minC, maxC, minD, maxD);
+	        
+	        Response response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+	        
+	        return response;
+	    }
+	    
+	    @RequestMapping("/exportMPExcel")
+		public ResponseEntity<InputStreamResource> exportPLantsExcel(@RequestParam int month,
+	            @RequestParam int year,
+	            @RequestParam int limitChange, 
+	            @RequestParam BigDecimal minA, @RequestParam BigDecimal maxA,
+	            @RequestParam BigDecimal minB, @RequestParam BigDecimal maxB,
+	            @RequestParam BigDecimal minC, @RequestParam BigDecimal maxC,
+	            @RequestParam BigDecimal minD, @RequestParam BigDecimal maxD) throws IOException {
+		    String filename = "PREPARE PROD NOV 2024.xlsx";
+		    
+		    ByteArrayInputStream data = monthlyPlanServiceImpl.exportExcel(month, year, limitChange, minA, maxA, minB, maxB, minC, maxC, minD, maxD);
 		    InputStreamResource file = new InputStreamResource(data);
 		    
 		    return ResponseEntity.ok()

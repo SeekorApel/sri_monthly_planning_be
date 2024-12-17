@@ -26,4 +26,10 @@ public interface WorkDayRepo extends JpaRepository<WorkDay, Date> {
 	@Query(value = "SELECT * FROM SRI_IMPP_M_WD WHERE DATE_WD BETWEEN TO_DATE(:startDate, 'DD-MM-YYYY') AND TO_DATE(:endDate, 'DD-MM-YYYY') ORDER BY DATE_WD ASC", nativeQuery = true)
 	List<WorkDay> findAllByDateRange(@Param("startDate") String startDate, @Param("endDate") String endDate);
 	
+    @Query(value = "SELECT * " +
+	        "FROM SRI_IMPP_M_WD " +
+	        "WHERE EXTRACT(MONTH FROM DATE_WD) = :month " +
+	        "AND EXTRACT(YEAR FROM DATE_WD) = :year", nativeQuery = true)
+	List<WorkDay> findByMonthYear(@Param("month") int month,@Param("year") int year);
+
 }
