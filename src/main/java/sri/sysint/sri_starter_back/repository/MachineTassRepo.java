@@ -26,4 +26,7 @@ public interface MachineTassRepo extends JpaRepository<MachineTass, BigDecimal>{
 	
 	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINE_TASS WHERE STATUS = 1", nativeQuery = true)
 	List<MachineTass> findMachineTassActive();
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_MACHINE_TASS WHERE WORK_CENTER_TEXT = :wct", nativeQuery = true)
+    Optional<MachineTass> findByWct(@Param("wct") String wct);
 }
