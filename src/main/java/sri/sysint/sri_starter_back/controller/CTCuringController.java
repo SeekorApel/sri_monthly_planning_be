@@ -41,8 +41,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.CTAssy;
 import sri.sysint.sri_starter_back.model.CTCuring;
+import sri.sysint.sri_starter_back.model.ItemCuring;
+import sri.sysint.sri_starter_back.model.MachineCuring;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.service.CTCuringServiceImpl;
+import sri.sysint.sri_starter_back.repository.ItemCuringRepo;
+import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
 
 @CrossOrigin(maxAge = 3600)
 @RestController
@@ -53,6 +57,12 @@ public class CTCuringController {
 	@Autowired
 	private CTCuringServiceImpl ctCuringServiceImpl;
 	
+    @Autowired
+    private ItemCuringRepo itemCuringRepo;
+
+    @Autowired
+    private MachineCuringRepo machineCuringRepo;
+
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -284,117 +294,205 @@ public class CTCuringController {
 	public Response saveCTCuringExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
 		String header = req.getHeader("Authorization");
 
-	    if (header == null || !header.startsWith("Bearer ")) {
-	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-	    }
+		if (header == null || !header.startsWith("Bearer ")) {
+			throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+		}
 
-	    String token = header.replace("Bearer ", "");
+		String token = header.replace("Bearer ", "");
 
-	    try {
-	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-	            .build()
-	            .verify(token)
-	            .getSubject();
+		try {
+			String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+				.build()
+				.verify(token)
+				.getSubject();
 
-	        if (user != null) {
-	        	if (file.isEmpty()) {
-	    	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
-	    	    }
-	    	    
-	    	    ctCuringServiceImpl.deleteAllCTCuring();
+			if (user != null) {
+				if (file.isEmpty()) {
+					return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+				}
+				
+				try (InputStream inputStream = file.getInputStream()) {
+					XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+					XSSFSheet sheet = workbook.getSheetAt(0);
+					
+					List<CTCuring> ctCurings = new ArrayList<>();
+					List<String> errorMessages = new ArrayList<>();
+					
+					for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+						Row row = sheet.getRow(i);
+						if (row != null) {
+							CTCuring ctCuring = new CTCuring();
 
-	    	    try (InputStream inputStream = file.getInputStream()) {
-	    	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-	    	        XSSFSheet sheet = workbook.getSheetAt(0);
-	    	        
-	    	        List<CTCuring> ctCurings = new ArrayList<>();
+							boolean hasError = false;
 
-//	    	        boolean isTrue = true;
-//	    	        Row headerRow = sheet.getRow(0);
-//	    	        Row headerRow1 = sheet.getRow(1);
-//	    	        Row headerRow2 = sheet.getRow(2);
-//	    	        
-//	    	        if(headerRow != null) {
-//	    	        	  for (int i = 1; i < 37; i++) {
-//	    	        		  Cell cell = headerRow.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-//	    	        		  
-//	    	        		   if (cell != null) {
-//	    	        			   if (!ctAssyServiceImpl.getCellValue(headerRow1.getCell(1),CTAssyServiceImpl.Type.STRING).replace(".0", "").equals("NO")) {
-//	    	                            isTrue = false; 
-//	    	                        }
-//	    	        		   }
-//	    	        	  }
-//	    	        }
-	    	        
-	    	        for (int i = 3; i <= sheet.getLastRowNum(); i++) {
-	    	            Row row = sheet.getRow(i);
-	    	            if (row != null) {
-	    	                CTCuring ctCuring = new CTCuring();
+							// Loop through columns to validate cells
+							for (int col = 0; col <= 34; col++) {
+								Cell cell = row.getCell(col);
+								if (cell == null || cell.getCellType() == CellType.BLANK) {
+									errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom " + (col + 1));
+									hasError = true;
+								}
+							}
 
-	    	                Cell nameCell = row.getCell(1);
+							// Skip processing the row if there are errors
+							if (hasError) {
+								continue;
+							}
 
-	    	                if (nameCell != null) {
-	    	                    ctCuring.setCT_CURING_ID(ctCuringServiceImpl.getNewId());  
-	    	                    ctCuring.setWIP(getStringFromCell(row.getCell(0)));  // Column A
-	    	                    ctCuring.setGROUP_COUNTER(getStringFromCell(row.getCell(1)));  // Column C
-	    	                    ctCuring.setVAR_GROUP_COUNTER(getStringFromCell(row.getCell(2)));  // Column D
-	    	                    ctCuring.setSEQUENCE(getBigDecimalFromCell(row.getCell(3)));  // Column E
-	    	                    ctCuring.setWCT(getStringFromCell(row.getCell(4)));  // Column F
-	    	                    ctCuring.setOPERATION_SHORT_TEXT(getStringFromCell(row.getCell(5)));  // Column G
-	    	                    ctCuring.setOPERATION_UNIT(getStringFromCell(row.getCell(6)));  // Column H
-	    	                    ctCuring.setBASE_QUANTITY(getBigDecimalFromCell(row.getCell(7)));  // Column I
-	    	                    ctCuring.setSTANDART_VALUE_UNIT(getStringFromCell(row.getCell(8)));  // Column J
-	    	                    ctCuring.setCT_SEC1(getBigDecimalFromCell(row.getCell(9))); // Column K
-	    	                    ctCuring.setCT_HR1000(getBigDecimalFromCell(row.getCell(10)));  // Column L
-	    	                    ctCuring.setWH_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(11))); // Column M
-	    	                    ctCuring.setWH_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(12)));  // Column N
-	    	                    ctCuring.setWH_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(13))); // Column O
-	    	                    ctCuring.setWH_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(14)));  // Renamed JUMAT to FRIDAY (Column P)
-	    	                    ctCuring.setWH_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(15)));  // Column Q
-	    	                    ctCuring.setWH_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(16)));  // Renamed JUMAT to FRIDAY (Column R)
-	    	                    ctCuring.setALLOW_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(17)));  // Column S
-	    	                    ctCuring.setALLOW_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(18)));  // Column T
-	    	                    ctCuring.setALLOW_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(19)));  // Column U
-	    	                    ctCuring.setALLOW_TOTAL(getBigDecimalFromCell(row.getCell(20)));  // Column V
-	    	                    ctCuring.setOP_TIME_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(21)));  // Column W
-	    	                    ctCuring.setOP_TIME_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(22)));  // Column X
-	    	                    ctCuring.setOP_TIME_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(23)));  // Column Y
-	    	                    ctCuring.setOP_TIME_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(24))); // Renamed JUMAT to FRIDAY (Column Z)
-	    	                    ctCuring.setOP_TIME_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(25)));  // Column AA
-	    	                    ctCuring.setOP_TIME_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(26))); // Renamed JUMAT to FRIDAY (Column AB)
-	    	                    ctCuring.setKAPS_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(27)));  // Column AC
-	    	                    ctCuring.setKAPS_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(28))); // Column AD
-	    	                    ctCuring.setKAPS_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(29))); // Column AE
-	    	                    ctCuring.setKAPS_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(30))); // Renamed JUMAT to FRIDAY (Column AF)
-	    	                    ctCuring.setKAPS_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(31))); // Column AG
-	    	                    ctCuring.setKAPS_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(32))); // Renamed JUMAT to FRIDAY (Column AH)
-	    	                    ctCuring.setWAKTU_TOTAL_CT_NORMAL(getBigDecimalFromCell(row.getCell(33))); // Column AI
-	    	                    ctCuring.setWAKTU_TOTAL_CT_FRIDAY(getBigDecimalFromCell(row.getCell(34)));  // Renamed JUMAT to FRIDAY (Column AJ)
-	    	                    ctCuring.setSTATUS(BigDecimal.valueOf(1));  
-	    	                    ctCuring.setCREATION_DATE(new Date());  
-	    	                    ctCuring.setLAST_UPDATE_DATE(new Date());  
-	    	                }
+							// Proceed with processing the row
+							Cell wipCell = row.getCell(0);
+							Cell operationShortTextCell = row.getCell(5);
 
+							String wip = wipCell.getStringCellValue();
+							String operationShortText = operationShortTextCell.getStringCellValue();
+							Optional<ItemCuring> wipOpt = itemCuringRepo.findById(wip);
+							Optional<MachineCuring> operationShortTextOpt = machineCuringRepo.findById(operationShortText);
 
-	    	                ctCuringServiceImpl.saveCTCuring(ctCuring);
-	    	                ctCurings.add(ctCuring);
-	    	            }
-	    	        }
+							if (wipOpt.isPresent() && operationShortTextOpt.isPresent()) {
 
-	    	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), ctCurings);
+								ctCuring.setCT_CURING_ID(ctCuringServiceImpl.getNewId());
+								ctCuring.setWIP(wip);
 
-	    	    } catch (IOException e) {
-	    	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
-	    	    }
-	        } else {
-	            throw new ResourceNotFoundException("User not found");
-	        }
+								for (int col = 1; col <= 34; col++) {
+									Cell cell = row.getCell(col);
+									switch (col) {
+										case 1:
+											ctCuring.setGROUP_COUNTER(getStringFromCell(cell));
+											break;
+										case 2:
+											ctCuring.setVAR_GROUP_COUNTER(getStringFromCell(cell));
+											break;
+										case 3:
+											ctCuring.setSEQUENCE(getBigDecimalFromCell(cell));
+											break;
+										case 4:
+											ctCuring.setWCT(getStringFromCell(cell));
+											break;
+										case 5:
+											ctCuring.setOPERATION_SHORT_TEXT(getStringFromCell(cell));
+											break;
+										case 6:
+											ctCuring.setOPERATION_UNIT(getStringFromCell(cell));
+											break;
+										case 7:
+											ctCuring.setBASE_QUANTITY(getBigDecimalFromCell(cell));
+											break;
+										case 8:
+											ctCuring.setSTANDART_VALUE_UNIT(getStringFromCell(cell));
+											break;
+										case 9:
+											ctCuring.setCT_SEC1(getBigDecimalFromCell(cell));
+											break;
+										case 10:
+											ctCuring.setCT_HR1000(getBigDecimalFromCell(cell));
+											break;
+										case 11:
+											ctCuring.setWH_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
+											break;
+										case 12:
+											ctCuring.setWH_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
+											break;
+										case 13:
+											ctCuring.setWH_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
+											break;
+										case 14:
+											ctCuring.setWH_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 15:
+											ctCuring.setWH_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(cell));
+											break;
+										case 16:
+											ctCuring.setWH_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 17:
+											ctCuring.setALLOW_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
+											break;
+										case 18:
+											ctCuring.setALLOW_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
+											break;
+										case 19:
+											ctCuring.setALLOW_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
+											break;
+										case 20:
+											ctCuring.setALLOW_TOTAL(getBigDecimalFromCell(cell));
+											break;
+										case 21:
+											ctCuring.setOP_TIME_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
+											break;
+										case 22:
+											ctCuring.setOP_TIME_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
+											break;
+										case 23:
+											ctCuring.setOP_TIME_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
+											break;
+										case 24:
+											ctCuring.setOP_TIME_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 25:
+											ctCuring.setOP_TIME_NORMAL_SHIFT(getBigDecimalFromCell(cell));
+											break;
+										case 26:
+											ctCuring.setOP_TIME_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 27:
+											ctCuring.setKAPS_NORMAL_SHIFT_0(getBigDecimalFromCell(cell));
+											break;
+										case 28:
+											ctCuring.setKAPS_NORMAL_SHIFT_1(getBigDecimalFromCell(cell));
+											break;
+										case 29:
+											ctCuring.setKAPS_NORMAL_SHIFT_2(getBigDecimalFromCell(cell));
+											break;
+										case 30:
+											ctCuring.setKAPS_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 31:
+											ctCuring.setKAPS_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(cell));
+											break;
+										case 32:
+											ctCuring.setKAPS_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+										case 33:
+											ctCuring.setWAKTU_TOTAL_CT_NORMAL(getBigDecimalFromCell(cell));
+											break;
+										case 34:
+											ctCuring.setWAKTU_TOTAL_CT_FRIDAY(getBigDecimalFromCell(cell));
+											break;
+									}
+								}
+
+								ctCuring.setSTATUS(BigDecimal.valueOf(1));
+								ctCuring.setCREATION_DATE(new Date());
+								ctCuring.setLAST_UPDATE_DATE(new Date());
+								ctCurings.add(ctCuring);
+							} else {
+								errorMessages.add("Data Tidak Valid, Data WIP pada Baris " + (i + 1) + " Tidak Ditemukan");
+							}
+						}
+					}
+					if (!errorMessages.isEmpty()) {
+	                    return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+	                }
+					ctCuringServiceImpl.deleteAllCTCuring();
+					for(CTCuring ctCuring : ctCurings){
+						ctCuringServiceImpl.saveCTCuring(ctCuring);
+					}
+
+					return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), ctCurings);
+
+				} catch (IOException e) {
+					return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+				}
+			} else {
+				throw new ResourceNotFoundException("User not found");
+			}
+		} catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
 	    } catch (Exception e) {
 	        throw new ResourceNotFoundException("JWT token is not valid or expired");
 	    }
-	    
-	    return response;
 	}
+
 	private boolean isRowEmpty(Row row) {
 	    for (int j = 0; j < row.getLastCellNum(); j++) {
 	        Cell cell = row.getCell(j);
@@ -446,5 +544,15 @@ public class CTCuringController {
                 .body(file);
     }
     
-    
+	@GetMapping("/layoutCTCuringsExcel")
+    public ResponseEntity<InputStreamResource> layoutCTCuringsExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_CT_CURING.xlsx";
+        ByteArrayInputStream data = ctCuringServiceImpl.layoutCTCuringsExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
 }
