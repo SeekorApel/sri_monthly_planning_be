@@ -31,14 +31,21 @@ import org.springframework.stereotype.Service;
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.CuringSize;
 import sri.sysint.sri_starter_back.model.MachineCuringType;
+import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.repository.CuringSizeRepo;
 import sri.sysint.sri_starter_back.repository.MachineCuringTypeRepo;
+import sri.sysint.sri_starter_back.repository.SizeRepo;
 
 @Service
 @Transactional
 public class CuringSizeServiceImpl {
+    
 	@Autowired
     private CuringSizeRepo curingSizeRepo;
+
+    @Autowired
+    private SizeRepo sizeRepo;
+
 	@Autowired
     private MachineCuringTypeRepo machineCuringTypeRepo;
 	
@@ -170,6 +177,10 @@ public class CuringSizeServiceImpl {
             List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive().stream()
                 .map(MachineCuringType::getMACHINECURINGTYPE_ID)  
                 .collect(Collectors.toList());
+            List<Size> activeSizes = sizeRepo.findSizeActive();
+            List<String> sizeIDs = activeSizes.stream()
+                .map(Size::getSIZE_ID)
+                .collect(Collectors.toList());
 
             Sheet sheet = workbook.createSheet("CURING SIZE DATA");
             Font headerFont = workbook.createFont();
@@ -216,6 +227,19 @@ public class CuringSizeServiceImpl {
             namedRange.setRefersToFormula("HIDDEN_MACHINE_CURING_TYPES!$A$1:$A$" + machineCuringTypes.size());
 
             workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+            
+            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizeIDs.size(); i++) {
+                Row row = hiddenSheetSize.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(sizeIDs.get(i));
+            }
+
+            Name namedRangeSize = workbook.createName();
+            namedRangeSize.setNameName("sizeIDs");
+            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizeIDs.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
 
             int rowIndex = 1;
             for (CuringSize cs : curingSizes) {
@@ -259,6 +283,14 @@ public class CuringSizeServiceImpl {
             validation.setSuppressDropDownArrow(true);
             validation.setShowErrorBox(true);
             sheet.addValidationData(validation);
+            
+            DataValidationConstraint sizeConstraint = validationHelper.createFormulaListConstraint("sizeIDs");
+            CellRangeAddressList sizeAddressList = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation sizeValidation = validationHelper.createValidation(sizeConstraint, sizeAddressList);
+            sizeValidation.setSuppressDropDownArrow(true);
+            sizeValidation.setShowErrorBox(true);
+            sheet.addValidationData(sizeValidation);
+
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
@@ -292,6 +324,10 @@ public class CuringSizeServiceImpl {
         try {
             List<String> machineCuringTypes = machineCuringTypeRepo.findMachineCuringTypeActive().stream()
                 .map(MachineCuringType::getMACHINECURINGTYPE_ID)  
+                .collect(Collectors.toList());
+            List<Size> activeSizes = sizeRepo.findSizeActive();
+            List<String> sizeIDs = activeSizes.stream()
+                .map(Size::getSIZE_ID)
                 .collect(Collectors.toList());
 
             Sheet sheet = workbook.createSheet("CURING SIZE DATA");
@@ -347,8 +383,19 @@ public class CuringSizeServiceImpl {
                     cell.setCellStyle(borderStyle);
                 }
             }
-            
-            int rowIndex = 1;
+
+            Sheet hiddenSheetSize = workbook.createSheet("HIDDEN_SIZES");
+            for (int i = 0; i < sizeIDs.size(); i++) {
+                Row row = hiddenSheetSize.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(sizeIDs.get(i));
+            }
+
+            Name namedRangeSize = workbook.createName();
+            namedRangeSize.setNameName("sizeIDs");
+            namedRangeSize.setRefersToFormula("HIDDEN_SIZES!$A$1:$A$" + sizeIDs.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheetSize), true);
             
             DataValidationHelper validationHelper = sheet.getDataValidationHelper();
             DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("MachineCuringTypes");
@@ -357,6 +404,13 @@ public class CuringSizeServiceImpl {
             validation.setSuppressDropDownArrow(true);
             validation.setShowErrorBox(true);
             sheet.addValidationData(validation);
+
+            DataValidationConstraint sizeConstraint = validationHelper.createFormulaListConstraint("sizeIDs");
+            CellRangeAddressList sizeAddressList = new CellRangeAddressList(1, 1000, 3, 3);
+            DataValidation sizeValidation = validationHelper.createValidation(sizeConstraint, sizeAddressList);
+            sizeValidation.setSuppressDropDownArrow(true);
+            sizeValidation.setShowErrorBox(true);
+            sheet.addValidationData(sizeValidation);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());

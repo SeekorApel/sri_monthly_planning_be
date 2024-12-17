@@ -10,32 +10,30 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.DataFormat;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.Building;
 import sri.sysint.sri_starter_back.model.DDeliverySchedule;
+import sri.sysint.sri_starter_back.model.DeliverySchedule;
 import sri.sysint.sri_starter_back.repository.DDeliveryScheduleRepo;
+import sri.sysint.sri_starter_back.repository.DeliveryScheduleRepo;
 
 @Service
 @Transactional
 public class DDeliveryScheduleServiceImpl {
     @Autowired
     private DDeliveryScheduleRepo dDeliveryScheduleRepo;
+
+    @Autowired
+    private DeliveryScheduleRepo deliveryScheduleRepo;
 
     public DDeliveryScheduleServiceImpl(DDeliveryScheduleRepo dDeliveryScheduleRepo) {
         this.dDeliveryScheduleRepo = dDeliveryScheduleRepo;
@@ -178,7 +176,7 @@ public class DDeliveryScheduleServiceImpl {
             // Font for the header
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
-
+            
             // Border Style for cells
             CellStyle borderStyle = workbook.createCellStyle();
             borderStyle.setBorderTop(BorderStyle.THIN);
@@ -259,6 +257,31 @@ public class DDeliveryScheduleServiceImpl {
                 totalDeliveryCell.setCellValue(d.getTOTAL_DELIVERY() != null ? d.getTOTAL_DELIVERY().doubleValue() : 0);
                 totalDeliveryCell.setCellStyle(borderStyle);
             }
+            List<DeliverySchedule> activeDeliverySchedules = deliveryScheduleRepo.findDeliveryScheduleActive();
+            List<BigDecimal> DeliveryScheduleIDs = activeDeliverySchedules.stream()
+                .map(DeliverySchedule::getDS_ID)
+                .collect(Collectors.toList());
+                
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_DELIVERYSCHEDULES");
+            for (int i = 0; i < DeliveryScheduleIDs.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(DeliveryScheduleIDs.get(i).toPlainString());
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("DeliveryScheduleIDs");
+            namedRange.setRefersToFormula("HIDDEN_DELIVERYSCHEDULES!$A$1:$A$" + DeliveryScheduleIDs.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("DeliveryScheduleIDs");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
@@ -272,5 +295,104 @@ public class DDeliveryScheduleServiceImpl {
         }
     }
 
+        public ByteArrayInputStream layoutDDeliveryScheduleExcel() throws IOException {
+        ByteArrayInputStream byteArrayInputStream = layoutToExcel( );
+        return byteArrayInputStream;
+    }
+    
+    public ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR",                  
+            "DETAIL_DS_ID",
+            "DELIVERYSCHEDULE",
+            "PART_NUM",
+            "DATE",
+            "TOTAL_DELIVERY"
+        };
 
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<DeliverySchedule> activeDeliverySchedules = deliveryScheduleRepo.findDeliveryScheduleActive();
+            List<BigDecimal> DeliveryScheduleIDs = activeDeliverySchedules.stream()
+                .map(DeliverySchedule::getDS_ID)
+                .collect(Collectors.toList());
+
+            Sheet sheet = workbook.createSheet("DDeliverySchedule Data");
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_DELIVERYSCHEDULES");
+            for (int i = 0; i < DeliveryScheduleIDs.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(DeliveryScheduleIDs.get(i).toPlainString());
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("DeliveryScheduleIDs");
+            namedRange.setRefersToFormula("HIDDEN_DELIVERYSCHEDULES!$A$1:$A$" + DeliveryScheduleIDs.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            int rowIndex = 1;
+            int nomor = 1;
+            
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("DeliveryScheduleIDs");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export Quadrant data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
+        }
+    }
 }
