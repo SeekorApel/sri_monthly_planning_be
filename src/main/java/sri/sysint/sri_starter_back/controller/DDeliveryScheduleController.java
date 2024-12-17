@@ -379,7 +379,6 @@ public class DDeliveryScheduleController {
 	                        }
 	                        Optional<DeliverySchedule> deliveryScheduleOpt = deliveryScheduleRepo.findById(dsIdC);
                             if (deliveryScheduleOpt.isPresent()) {
-                                System.out.println(dsIdC+" ada");
                                 dDeliverySchedule.setDETAIL_DS_ID(dDeliveryScheduleServiceImpl.getNewId());
 
                                 dDeliverySchedule.setDS_ID(dsIdC);
@@ -415,7 +414,6 @@ public class DDeliveryScheduleController {
                                 dDeliverySchedule.setLAST_UPDATE_DATE(new Date());
                                 dDeliverySchedules.add(dDeliverySchedule);
                             } else {
-                                System.out.println(dsIdC+" tidak ada");
 	                            errorMessages.add("Data Tidak Valid, Data Delivery Schedule pada Baris " + (i + 1) + " Tidak Ditemukan");
 	                        }
                         }
