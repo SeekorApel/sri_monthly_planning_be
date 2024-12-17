@@ -243,7 +243,7 @@ public class QuadrantServiceImpl {
                 }
 
                 Cell buildingNameCell = dataRow.createCell(2);
-                buildingNameCell.setCellValue(buildingName != null ? buildingName : "Unknown");
+                buildingNameCell.setCellValue(buildingName != null ? buildingName : "");
                 buildingNameCell.setCellStyle(borderStyle);
 
                 Cell nameCell = dataRow.createCell(3);
