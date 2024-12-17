@@ -42,7 +42,7 @@ public class SizeServiceImpl {
     }
 	
     public List<Size> getAllSize() {
-        Iterable<Size> sizes = sizeRepo.getDataOrderId();
+        Iterable<Size> sizes = sizeRepo.findAll();
         List<Size> sizeList = new ArrayList<>();
         for (Size item : sizes) {
             Size sizeTemp = new Size(item);

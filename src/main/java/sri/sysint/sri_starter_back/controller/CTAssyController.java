@@ -43,9 +43,13 @@ import com.auth0.jwt.algorithms.Algorithm;
 
 import sri.sysint.sri_starter_back.exception.ResourceNotFoundException;
 import sri.sysint.sri_starter_back.model.CTAssy;
+import sri.sysint.sri_starter_back.model.ItemAssy;
+import sri.sysint.sri_starter_back.model.MachineTass;
 import sri.sysint.sri_starter_back.model.Plant;
 import sri.sysint.sri_starter_back.model.Response;
 import sri.sysint.sri_starter_back.service.CTAssyServiceImpl;
+import sri.sysint.sri_starter_back.repository.ItemAssyRepo;
+import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 
 @CrossOrigin(maxAge = 3600)
 @RestController
@@ -55,7 +59,12 @@ public class CTAssyController {
 
 	@Autowired
 	private CTAssyServiceImpl ctAssyServiceImpl;
-	
+
+	@Autowired
+    private ItemAssyRepo itemAssyRepo;
+
+    @Autowired
+    private MachineTassRepo machineTassRepo;
 	@PersistenceContext	
 	private EntityManager em;
 	
@@ -285,117 +294,138 @@ public class CTAssyController {
 	
 	@PostMapping("/saveCTAssyExcel")
 	public Response saveCTAssyExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-//		String header = req.getHeader("Authorization");
-//
-//	    if (header == null || !header.startsWith("Bearer ")) {
-//	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-//	    }
-//
-//	    String token = header.replace("Bearer ", "");
-//
-//	    try {
-//	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-//	            .build()
-//	            .verify(token)
-//	            .getSubject();
-//
-//	        if (user != null) {
-	        	if (file.isEmpty()) {
-	    	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
-	    	    }
-	    	    
-	    	    ctAssyServiceImpl.deleteAllCTAssy();
+	   String header = req.getHeader("Authorization");
+	
+	   if (header == null || !header.startsWith("Bearer ")) {
+	       throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+	   }
+	
+	   String token = header.replace("Bearer ", "");
+	
+	   try {
+	       String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+	           .build()
+	           .verify(token)
+	           .getSubject();
+	
+	       if (user != null) {
+				if (file.isEmpty()) {
+					return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
+				}
+				
 
-	    	    try (InputStream inputStream = file.getInputStream()) {
-	    	        XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-	    	        XSSFSheet sheet = workbook.getSheetAt(0);
-	    	        
-	    	        List<CTAssy> ctAssys = new ArrayList<>();
-	    	        
-	    	        for (int i = 3; i <= sheet.getLastRowNum(); i++) {
-	    	            Row row = sheet.getRow(i);
-	    	            if (row != null) {
-	    	            	
-	    	            	boolean isEmptyRow = true;
+				try (InputStream inputStream = file.getInputStream()) {
+					XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+					XSSFSheet sheet = workbook.getSheetAt(0);
+					
+					List<CTAssy> ctAssys = new ArrayList<>();
+					List<String> errorMessages = new ArrayList<>();
 
-	                        for (int j = 0; j < row.getLastCellNum(); j++) {
-	                            Cell cell = row.getCell(j);
-	                            if (cell != null && cell.getCellType() != CellType.BLANK) {
-	                                isEmptyRow = false;
-	                                break;
-	                            }
-	                        }
-	                        
-	                        if (isEmptyRow) {
-	                            continue; 
-	                        }
-	                        
-	    	                CTAssy ctAssy = new CTAssy();
+					for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+						Row row = sheet.getRow(i);
+						if (row != null) {
+							
 
-	    	                Cell nameCell = row.getCell(1);
+							boolean hasError = false;
 
-	    	                if (nameCell != null) {
-	    	                    ctAssy.setCT_ASSY_ID(ctAssyServiceImpl.getNewId());  
-	    	                    ctAssy.setWIP(getStringFromCell(row.getCell(0)));  
-	    	                    ctAssy.setDESCRIPTION(getStringFromCell(row.getCell(1)));  
-	    	                    ctAssy.setGROUP_COUNTER(getStringFromCell(row.getCell(2))); 
-	    	                    ctAssy.setVAR_GROUP_COUNTER(getStringFromCell(row.getCell(3)));  
-	    	                    ctAssy.setSEQUENCE(getBigDecimalFromCell(row.getCell(4)));  
-	    	                    ctAssy.setWCT(getStringFromCell(row.getCell(5)));  
-	    	                    ctAssy.setOPERATION_SHORT_TEXT(getStringFromCell(row.getCell(6))); 
-	    	                    ctAssy.setOPERATION_UNIT(getStringFromCell(row.getCell(7))); 
-	    	                    ctAssy.setBASE_QUANTITY(getBigDecimalFromCell(row.getCell(8))); 
-	    	                    ctAssy.setSTANDARD_VALUE_UNIT(getStringFromCell(row.getCell(9)));  
-	    	                    ctAssy.setCT_SEC_1(getBigDecimalFromCell(row.getCell(10))); 
-	    	                    ctAssy.setCT_HR_1000(getBigDecimalFromCell(row.getCell(11)));  
-	    	                    ctAssy.setWH_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(12))); 
-	    	                    ctAssy.setWH_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(13))); 
-	    	                    ctAssy.setWH_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(14))); 
-	    	                    ctAssy.setWH_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(15))); 
-	    	                    ctAssy.setWH_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(16)));  
-	    	                    ctAssy.setWH_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(17)));  
-	    	                    ctAssy.setALLOW_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(18)));  
-	    	                    ctAssy.setALLOW_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(19)));  
-	    	                    ctAssy.setALLOW_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(20)));  
-	    	                    ctAssy.setALLOW_TOTAL(getBigDecimalFromCell(row.getCell(21)));  
-	    	                    ctAssy.setOP_TIME_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(22)));
-	    	                    ctAssy.setOP_TIME_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(23)));  
-	    	                    ctAssy.setOP_TIME_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(24))); 
-	    	                    ctAssy.setOP_TIME_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(25))); 
-	    	                    ctAssy.setOP_TIME_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(26)));  
-	    	                    ctAssy.setOP_TIME_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(27))); 
-	    	                    ctAssy.setKAPS_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(28)));  
-	    	                    ctAssy.setKAPS_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(29))); 
-	    	                    ctAssy.setKAPS_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(30))); 
-	    	                    ctAssy.setKAPS_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(31))); 
-	    	                    ctAssy.setKAPS_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(32))); 
-	    	                    ctAssy.setKAPS_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(33))); 
-	    	                    ctAssy.setWAKTU_TOTAL_CT_NORMAL(getBigDecimalFromCell(row.getCell(34))); 
-	    	                    ctAssy.setWAKTU_TOTAL_CT_FRIDAY(getBigDecimalFromCell(row.getCell(34)));  
-	    	                    ctAssy.setSTATUS(BigDecimal.valueOf(1));  
-	    	                    ctAssy.setCREATION_DATE(new Date());  
-	    	                    ctAssy.setLAST_UPDATE_DATE(new Date());  
-	    	                }
+							// Loop through columns to validate cells
+							for (int col = 0; col <= 34; col++) {
+								Cell cell = row.getCell(col);
+								if (cell == null || cell.getCellType() == CellType.BLANK) {
+									errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom " + (col + 1));
+									hasError = true;
+								}
+							}
 
-	    	                ctAssyServiceImpl.saveCTAssy(ctAssy);
-	    	                ctAssys.add(ctAssy);
-	    	            }
-	    	        }
+							// Skip processing the row if there are errors
+							if (hasError) {
+								continue;
+							}
 
-	    	        response = new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), ctAssys);
+							Cell wipCell = row.getCell(0);
+							Cell operationShortTextCell = row.getCell(6);
 
-	    	    } catch (IOException e) {
-	    	        response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
-	    	    }
-//	        } else {
-//	            throw new ResourceNotFoundException("User not found");
-//	        }
-//	    } catch (Exception e) {
-//	        throw new ResourceNotFoundException("JWT token is not valid or expired");
-//	    }
-	    
-	    return response;
+							String wip = wipCell.getStringCellValue();
+							String operationShortText = operationShortTextCell.getStringCellValue();
+							Optional<ItemAssy> wipOpt = itemAssyRepo.findById(wip);
+							Optional<MachineTass> operationShortTextOpt = machineTassRepo.findById(operationShortText);
+
+							if (wipOpt.isPresent() && operationShortTextOpt.isPresent()) {
+								CTAssy ctAssy = new CTAssy();
+								ctAssy.setCT_ASSY_ID(ctAssyServiceImpl.getNewId());  
+								ctAssy.setWIP(getStringFromCell(row.getCell(0)));  
+								ctAssy.setDESCRIPTION(getStringFromCell(row.getCell(1)));  
+								ctAssy.setGROUP_COUNTER(getStringFromCell(row.getCell(2))); 
+								ctAssy.setVAR_GROUP_COUNTER(getStringFromCell(row.getCell(3)));  
+								ctAssy.setSEQUENCE(getBigDecimalFromCell(row.getCell(4)));  
+								ctAssy.setWCT(getStringFromCell(row.getCell(5)));  
+								ctAssy.setOPERATION_SHORT_TEXT(getStringFromCell(row.getCell(6))); 
+								ctAssy.setOPERATION_UNIT(getStringFromCell(row.getCell(7))); 
+								ctAssy.setBASE_QUANTITY(getBigDecimalFromCell(row.getCell(8))); 
+								ctAssy.setSTANDARD_VALUE_UNIT(getStringFromCell(row.getCell(9)));  
+								ctAssy.setCT_SEC_1(getBigDecimalFromCell(row.getCell(10))); 
+								ctAssy.setCT_HR_1000(getBigDecimalFromCell(row.getCell(11)));  
+								ctAssy.setWH_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(12))); 
+								ctAssy.setWH_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(13))); 
+								ctAssy.setWH_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(14))); 
+								ctAssy.setWH_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(15))); 
+								ctAssy.setWH_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(16)));  
+								ctAssy.setWH_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(17)));  
+								ctAssy.setALLOW_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(18)));  
+								ctAssy.setALLOW_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(19)));  
+								ctAssy.setALLOW_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(20)));  
+								ctAssy.setALLOW_TOTAL(getBigDecimalFromCell(row.getCell(21)));  
+								ctAssy.setOP_TIME_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(22)));
+								ctAssy.setOP_TIME_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(23)));  
+								ctAssy.setOP_TIME_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(24))); 
+								ctAssy.setOP_TIME_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(25))); 
+								ctAssy.setOP_TIME_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(26)));  
+								ctAssy.setOP_TIME_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(27))); 
+								ctAssy.setKAPS_NORMAL_SHIFT_0(getBigDecimalFromCell(row.getCell(28)));  
+								ctAssy.setKAPS_NORMAL_SHIFT_1(getBigDecimalFromCell(row.getCell(29))); 
+								ctAssy.setKAPS_NORMAL_SHIFT_2(getBigDecimalFromCell(row.getCell(30))); 
+								ctAssy.setKAPS_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(31))); 
+								ctAssy.setKAPS_TOTAL_NORMAL_SHIFT(getBigDecimalFromCell(row.getCell(32))); 
+								ctAssy.setKAPS_TOTAL_SHIFT_FRIDAY(getBigDecimalFromCell(row.getCell(33))); 
+								ctAssy.setWAKTU_TOTAL_CT_NORMAL(getBigDecimalFromCell(row.getCell(34))); 
+								ctAssy.setWAKTU_TOTAL_CT_FRIDAY(getBigDecimalFromCell(row.getCell(34)));  
+								ctAssy.setSTATUS(BigDecimal.valueOf(1));  
+								ctAssy.setCREATION_DATE(new Date());  
+								ctAssy.setLAST_UPDATE_DATE(new Date());  
+								ctAssys.add(ctAssy);
+							} else if(!wipOpt.isPresent()) {
+								errorMessages.add("Data Tidak Valid, Data WIP pada Baris " + (i + 1) + " Tidak Ditemukan");
+							} else if(!operationShortTextOpt.isPresent()) {
+								errorMessages.add("Data Tidak Valid, Data Operation Short Text pada Baris " + (i + 1) + " Tidak Ditemukan");
+							}else{
+								errorMessages.add("Data Tidak Valid, pada Baris " + (i + 1) + " Tidak Ditemukan");
+							}
+						}
+					}
+
+					if (!errorMessages.isEmpty()) {
+						return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, String.join("; ", errorMessages), req.getRequestURI(), null);
+					}
+					ctAssyServiceImpl.deleteAllCTAssy();
+					for(CTAssy ctAssy : ctAssys){
+						ctAssyServiceImpl.saveCTAssy(ctAssy);
+					}
+
+					return new Response(new Date(), HttpStatus.OK.value(), null, "File processed and data saved", req.getRequestURI(), ctAssys);
+
+				} catch (IOException e) {
+					return new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, "Error processing file", req.getRequestURI(), null);
+				}
+	       } else {
+	           throw new ResourceNotFoundException("User not found");
+	       }
+	   } catch (IllegalArgumentException e) {
+	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+	    } catch (Exception e) {
+	       throw new ResourceNotFoundException("JWT token is not valid or expired");
+	   }
 	}
+
 
 	private BigDecimal getBigDecimalFromCell(Cell cell) {
 	    if (cell == null) {
@@ -430,6 +460,18 @@ public class CTAssyController {
 
         // Generate the Excel data using the service method
         ByteArrayInputStream data = ctAssyServiceImpl.exportCtAssyExcel();
+        InputStreamResource file = new InputStreamResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
+    }
+
+	@GetMapping("/layoutCTAssysExcel")
+    public ResponseEntity<InputStreamResource> layoutCTAssysExcel() throws IOException {
+        String filename = "LAYOUT_MASTER_CT_ASSY.xlsx";
+        ByteArrayInputStream data = ctAssyServiceImpl.layoutCTAssysExcel();
         InputStreamResource file = new InputStreamResource(data);
 
         return ResponseEntity.ok()
