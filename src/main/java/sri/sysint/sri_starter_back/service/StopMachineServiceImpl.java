@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
@@ -25,19 +26,29 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.DataFormat;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import sri.sysint.sri_starter_back.model.MachineCuring;
+import sri.sysint.sri_starter_back.model.MachineTass;
 import sri.sysint.sri_starter_back.model.Size;
 import sri.sysint.sri_starter_back.model.StopMachine;
 import sri.sysint.sri_starter_back.repository.StopMachineRepo;
+import sri.sysint.sri_starter_back.repository.MachineCuringRepo;
+import sri.sysint.sri_starter_back.repository.MachineTassRepo;
 
 @Service
 @Transactional
@@ -45,7 +56,10 @@ public class StopMachineServiceImpl {
 
     @Autowired
     private StopMachineRepo stopMachineRepo;
-
+    @Autowired
+    private MachineCuringRepo machineCuringRepo;
+    @Autowired
+    private MachineTassRepo machineTassRepo;
     public StopMachineServiceImpl(StopMachineRepo stopMachineRepo) {
         this.stopMachineRepo = stopMachineRepo;
     }
@@ -203,12 +217,25 @@ public class StopMachineServiceImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         try {
+            List<String> machineCuringNames = machineCuringRepo.findMachineCuringActive()
+                .stream()
+                .map(MachineCuring::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+
+            List<String> machineTassNames = machineTassRepo.findMachineTassActive()
+                .stream()
+                .map(MachineTass::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+
+            List<String> combinedMachineNames = new ArrayList<>();
+            combinedMachineNames.addAll(machineCuringNames);
+            combinedMachineNames.addAll(machineTassNames);
+
             Sheet sheet = workbook.createSheet("STOP MACHINE DATA");
 
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
 
-            // Border Style for cells
             CellStyle borderStyle = workbook.createCellStyle();
             borderStyle.setBorderTop(BorderStyle.THIN);
             borderStyle.setBorderBottom(BorderStyle.THIN);
@@ -218,35 +245,28 @@ public class StopMachineServiceImpl {
             borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
             borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Header Style with bold font and yellow background
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.cloneStyleFrom(borderStyle);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-            // Date style for formatting dates in dd-MM-yyyy format
             CellStyle dateStyle = workbook.createCellStyle();
             dateStyle.cloneStyleFrom(borderStyle);
             DataFormat dateFormat = workbook.createDataFormat();
             dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
 
-            // Time style for formatting time (hh:mm)
             CellStyle timeStyle = workbook.createCellStyle();
             timeStyle.cloneStyleFrom(borderStyle);
             timeStyle.setDataFormat(dateFormat.getFormat("hh:mm"));
 
-            // Set column widths (adjusted from your example)
-            sheet.setColumnWidth(0, 10 * 256); 
-            sheet.setColumnWidth(1, 20 * 256); 
-            sheet.setColumnWidth(2, 30 * 256); 
-            sheet.setColumnWidth(3, 20 * 256); 
-            sheet.setColumnWidth(4, 20 * 256); 
-            sheet.setColumnWidth(5, 20 * 256); 
-            sheet.setColumnWidth(6, 20 * 256);
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
 
-            // Create header row
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < header.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -254,48 +274,54 @@ public class StopMachineServiceImpl {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Fill data rows
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_MACHINES");
+            for (int i = 0; i < combinedMachineNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(combinedMachineNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("MachineNames");
+            namedRange.setRefersToFormula("HIDDEN_MACHINES!$A$1:$A$" + combinedMachineNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
             int rowIndex = 1;
             int nomor = 1;
             for (StopMachine sm : stopMachines) {
                 Row dataRow = sheet.createRow(rowIndex++);
 
-                // NOMOR column
                 Cell nomorCell = dataRow.createCell(0);
                 nomorCell.setCellValue(nomor++);
                 nomorCell.setCellStyle(borderStyle);
 
-                // STOP_MACHINE_ID column
                 Cell idCell = dataRow.createCell(1);
-                idCell.setCellValue(sm.getSTOP_MACHINE_ID() != null ? sm.getSTOP_MACHINE_ID().doubleValue() : null);  
+                idCell.setCellValue(sm.getSTOP_MACHINE_ID() != null ? sm.getSTOP_MACHINE_ID().doubleValue() : null);
                 idCell.setCellStyle(borderStyle);
 
-                // WORK_CENTER_TEXT column
                 Cell workCenterCell = dataRow.createCell(2);
-                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT() != null ? sm.getWORK_CENTER_TEXT() : "");  
+                workCenterCell.setCellValue(sm.getWORK_CENTER_TEXT() != null ? sm.getWORK_CENTER_TEXT() : "");
                 workCenterCell.setCellStyle(borderStyle);
 
-                // DATE_PM column (formatted as date)
                 Cell startdatePmCell = dataRow.createCell(3);
                 if (sm.getSTART_DATE() != null) {
-                	startdatePmCell.setCellValue(sm.getSTART_DATE());
-                	startdatePmCell.setCellStyle(dateStyle);
+                    startdatePmCell.setCellValue(sm.getSTART_DATE());
+                    startdatePmCell.setCellStyle(dateStyle);
                 } else {
-                	startdatePmCell.setCellValue("");
+                    startdatePmCell.setCellValue("");
                     startdatePmCell.setCellStyle(borderStyle);
                 }
-                
-                // DATE_PM column (formatted as date)
+
                 Cell enddatePmCell = dataRow.createCell(4);
                 if (sm.getEND_DATE() != null) {
-                	enddatePmCell.setCellValue(sm.getEND_DATE());
-                	enddatePmCell.setCellStyle(dateStyle);
+                    enddatePmCell.setCellValue(sm.getEND_DATE());
+                    enddatePmCell.setCellStyle(dateStyle);
                 } else {
-                	enddatePmCell.setCellValue("");
-                	enddatePmCell.setCellStyle(borderStyle);
+                    enddatePmCell.setCellValue("");
+                    enddatePmCell.setCellStyle(borderStyle);
                 }
 
-                // START_TIME column (formatted as time)
                 Cell startTimeCell = dataRow.createCell(5);
                 if (sm.getSTART_TIME() != null) {
                     startTimeCell.setCellValue(sm.getSTART_TIME());
@@ -305,7 +331,6 @@ public class StopMachineServiceImpl {
                     startTimeCell.setCellStyle(borderStyle);
                 }
 
-                // END_TIME column (formatted as time)
                 Cell endTimeCell = dataRow.createCell(6);
                 if (sm.getEND_TIME() != null) {
                     endTimeCell.setCellValue(sm.getEND_TIME());
@@ -324,17 +349,30 @@ public class StopMachineServiceImpl {
                 totalTimeCell.setCellStyle(borderStyle);
             }
 
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("MachineNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Failed to export data");
-            return null;
+            throw e;
         } finally {
             workbook.close();
             out.close();
         }
     }
+
     
     private int combineTimeWithMinutes(String timeStr) {
         String[] parts = timeStr.split(":");
@@ -433,6 +471,131 @@ public class StopMachineServiceImpl {
         } catch (Exception e) {
             System.err.println("Error calculating total time: " + e.getMessage());
             return BigDecimal.ZERO;
+        }
+    }
+    
+    public ByteArrayInputStream layoutStopMachinesExcel() throws IOException {
+        return layoutToExcel();
+    }
+
+    public ByteArrayInputStream layoutToExcel() throws IOException {
+        String[] header = {
+            "NOMOR", 
+            "STOP_MACHINE_ID", 
+            "WORK_CENTER_TEXT", 
+            "START_DATE",
+            "END_DATE",
+            "START_TIME",
+            "END_TIME",
+            "TOTAL_TIME"
+        };
+
+        Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            List<String> machineCuringNames = machineCuringRepo.findMachineCuringActive()
+                .stream()
+                .map(MachineCuring::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+
+            List<String> machineTassNames = machineTassRepo.findMachineTassActive()
+                .stream()
+                .map(MachineTass::getWORK_CENTER_TEXT)
+                .collect(Collectors.toList());
+
+            List<String> combinedMachineNames = new ArrayList<>();
+            combinedMachineNames.addAll(machineCuringNames);
+            combinedMachineNames.addAll(machineTassNames);
+
+            Sheet sheet = workbook.createSheet("STOP MACHINE DATA");
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+
+            CellStyle borderStyle = workbook.createCellStyle();
+            borderStyle.setBorderTop(BorderStyle.THIN);
+            borderStyle.setBorderBottom(BorderStyle.THIN);
+            borderStyle.setBorderLeft(BorderStyle.THIN);
+            borderStyle.setBorderRight(BorderStyle.THIN);
+            borderStyle.setTopBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setRightBorderColor(IndexedColors.BLACK.getIndex());
+            borderStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.cloneStyleFrom(borderStyle);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle dateStyle = workbook.createCellStyle();
+            dateStyle.cloneStyleFrom(borderStyle);
+            DataFormat dateFormat = workbook.createDataFormat();
+            dateStyle.setDataFormat(dateFormat.getFormat("dd-MM-yyyy"));
+
+            CellStyle timeStyle = workbook.createCellStyle();
+            timeStyle.cloneStyleFrom(borderStyle);
+            timeStyle.setDataFormat(dateFormat.getFormat("hh:mm"));
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < header.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(header[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            Sheet hiddenSheet = workbook.createSheet("HIDDEN_MACHINES");
+            for (int i = 0; i < combinedMachineNames.size(); i++) {
+                Row row = hiddenSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(combinedMachineNames.get(i));
+            }
+
+            Name namedRange = workbook.createName();
+            namedRange.setNameName("MachineNames");
+            namedRange.setRefersToFormula("HIDDEN_MACHINES!$A$1:$A$" + combinedMachineNames.size());
+
+            workbook.setSheetHidden(workbook.getSheetIndex(hiddenSheet), true);
+
+            int rowIndex = 1;
+            int nomor = 1;
+            
+            for (int i = 1; i <= 5; i++) {
+                Row dataRow = sheet.createRow(i);
+                for (int j = 0; j < header.length; j++) {
+                    Cell cell = dataRow.createCell(j);
+                    cell.setCellStyle(borderStyle);
+                }
+            }
+            
+            DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+            DataValidationConstraint constraint = validationHelper.createFormulaListConstraint("MachineNames");
+            CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, 2, 2);
+            DataValidation validation = validationHelper.createValidation(constraint, addressList);
+            validation.setSuppressDropDownArrow(true);
+            validation.setShowErrorBox(true);
+            sheet.addValidationData(validation);
+
+            for (int i = 0; i < header.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Failed to export data");
+            throw e;
+        } finally {
+            workbook.close();
+            out.close();
         }
     }
 }
