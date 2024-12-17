@@ -324,7 +324,7 @@ public class CTAssyController {
 					for (int i = 3; i <= sheet.getLastRowNum(); i++) {
 						Row row = sheet.getRow(i);
 						if (row != null) {
-							CTAssy ctAssy = new CTAssy();
+							
 
 							boolean hasError = false;
 
@@ -351,6 +351,7 @@ public class CTAssyController {
 							Optional<MachineTass> operationShortTextOpt = machineTassRepo.findById(operationShortText);
 
 							if (wipOpt.isPresent() && operationShortTextOpt.isPresent()) {
+								CTAssy ctAssy = new CTAssy();
 								ctAssy.setCT_ASSY_ID(ctAssyServiceImpl.getNewId());  
 								ctAssy.setWIP(getStringFromCell(row.getCell(0)));  
 								ctAssy.setDESCRIPTION(getStringFromCell(row.getCell(1)));  
@@ -392,9 +393,9 @@ public class CTAssyController {
 								ctAssy.setCREATION_DATE(new Date());  
 								ctAssy.setLAST_UPDATE_DATE(new Date());  
 								ctAssys.add(ctAssy);
-							} else if(wipOpt.isPresent()) {
+							} else if(!wipOpt.isPresent()) {
 								errorMessages.add("Data Tidak Valid, Data WIP pada Baris " + (i + 1) + " Tidak Ditemukan");
-							} else if(operationShortTextOpt.isPresent()) {
+							} else if(!operationShortTextOpt.isPresent()) {
 								errorMessages.add("Data Tidak Valid, Data Operation Short Text pada Baris " + (i + 1) + " Tidak Ditemukan");
 							}else{
 								errorMessages.add("Data Tidak Valid, pada Baris " + (i + 1) + " Tidak Ditemukan");
