@@ -88,6 +88,9 @@ public class DetailMarketingOrder {
 	@Column(name = "LOCK_STATUS_MONTH_2")
 	private BigDecimal lockStatusM2;
 	
+	@Column(name = "TOTAL_AR")
+	private BigDecimal totalAr;
+	
 	@Column(name = "AR")
 	private BigDecimal ar;
 	
@@ -138,6 +141,7 @@ public class DetailMarketingOrder {
 	    this.lockStatusM0 = detailMarketingOrder.getLockStatusM0();
 	    this.lockStatusM1 = detailMarketingOrder.getLockStatusM1();
 	    this.lockStatusM2 = detailMarketingOrder.getLockStatusM2();
+	    this.totalAr = detailMarketingOrder.getTotalAr();
 	    this.ar = detailMarketingOrder.getAr();
 	    this.defect = detailMarketingOrder.getDefect();
 	    this.reject = detailMarketingOrder.getReject();
@@ -352,6 +356,15 @@ public class DetailMarketingOrder {
 		this.lockStatusM2 = lockStatusM2;
 	}
 	
+	
+	public BigDecimal getTotalAr() {
+		return totalAr;
+	}
+
+	public void setTotalAr(BigDecimal totalAr) {
+		this.totalAr = totalAr;
+	}
+
 	public BigDecimal getAr() {
 		return ar;
 	}
