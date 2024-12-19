@@ -28,6 +28,9 @@ public interface UserRepo extends JpaRepository<Users, Long> {
 	
 	@Query(value="SELECT TRUNC(SYSDATE) FROM DUAL", nativeQuery = true)
 	Date getTruncSysdate();
+	
+	@Query(value="SELECT * FROM SRI_APP_USERS WHERE USERNAME = :userName AND PASS = :passWord", nativeQuery = true)
+	Users findByUsernamePassword(@Param("userName") String userName,@Param("passWord") String passWord);
 
 
 }

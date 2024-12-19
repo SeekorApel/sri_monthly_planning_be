@@ -56,11 +56,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     	Users user = userRepo.findByUserName(userName);
     	return user;
     }
-    
+        
     public Roles getRoleByUserId(Long userId) {
         Roles role = roleRepo.findById(userId).orElse(null);
         System.out.println(role);
         return (role != null) ? role : null;
+    }
+    
+    public Users getUser(String username, String password) {
+    	Users user = userRepo.findByUsernamePassword(username, password);
+    	if(user != null) {
+    		return user;
+    	}else {
+    		return null;
+    	}
     }
 
        
