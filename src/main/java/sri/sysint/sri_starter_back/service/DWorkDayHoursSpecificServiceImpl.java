@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.model.DWorkDayHoursSpesific;
+import sri.sysint.sri_starter_back.model.Setting;
 import sri.sysint.sri_starter_back.model.WorkDay;
 import sri.sysint.sri_starter_back.repository.DWorkDayHoursSpecificRepo;
 import sri.sysint.sri_starter_back.repository.WorkDayRepo;
@@ -67,7 +68,16 @@ public class DWorkDayHoursSpecificServiceImpl {
 	        System.out.println("Formatted date being sent to repository: " + formattedDate);
 	        return dWorkDayHoursSpecificRepo.findDWdHoursByDate(formattedDate);
 	    }
+	    
+	    // Mengambil jam kerja berdasarkan tanggal list
+	    public List<DWorkDayHoursSpesific> getWorkDayHoursSpecificListByDate(Date date) {
+	        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+	        String formattedDate = dateFormat.format(date);
 
+	        System.out.println("Formatted date being sent to repository: " + formattedDate);
+	        return dWorkDayHoursSpecificRepo.findDWdHoursListByDate(formattedDate);
+	    }
+	    
 	    // Mengambil jam kerja berdasarkan tanggal dan deskripsi
 	    public Optional<DWorkDayHoursSpesific> getWorkDayHoursSpecificByDateDesc(Date date, String description) {
 	        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
@@ -86,23 +96,19 @@ public class DWorkDayHoursSpecificServiceImpl {
 	    public DWorkDayHoursSpesific saveWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) throws Exception {
 	        try {
 	        	
-	        	// Menghitung total waktu per shift
                 BigDecimal shift1TotalTime = calculateTotalTime(workHoursSpecific.getSHIFT1_START_TIME(), workHoursSpecific.getSHIFT1_END_TIME());
 
-                // Menggunakan zona waktu UTC
                 Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
                 calendar.setTime(workHoursSpecific.getDATE_WD());
 
-                System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); // Debug log untuk memastikan hari yang benar
+                System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); 
 
                 if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
-                    // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
                     Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); // Set zona waktu ke UTC
                     baseDate.setTime(workHoursSpecific.getDATE_WD()); // Menggunakan tanggal dari workHoursSpecific
                     Calendar startTime = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
                     Calendar endTime = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
 
-                 // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
                     Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
                     breakStart.setTime(workHoursSpecific.getDATE_WD());
                     breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
@@ -201,10 +207,8 @@ public class DWorkDayHoursSpecificServiceImpl {
 
 	    public DWorkDayHoursSpesific updateWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) throws Exception {
 	        try {
-	            // Format the date to "DD-MM-YYYY"
 	            String formattedDate = formatDateToString(workHoursSpecific.getDATE_WD());
 
-	            // Find record by formatted date and description
 	            Optional<DWorkDayHoursSpesific> currentWorkHoursSpecificOpt =
 	                    dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(formattedDate, workHoursSpecific.getDESCRIPTION());
 
@@ -282,11 +286,17 @@ public class DWorkDayHoursSpecificServiceImpl {
 	                currentWorkHoursSpecific.setLAST_UPDATE_DATE(new Date());
 	                currentWorkHoursSpecific.setLAST_UPDATED_BY(workHoursSpecific.getLAST_UPDATED_BY());
 
+	                System.out.println("Masuk sini 0");
+
 	                // Save and return the updated record
 	                DWorkDayHoursSpesific updatedWorkHoursSpecific = dWorkDayHoursSpecificRepo.save(currentWorkHoursSpecific);
 
+	                System.out.println("Masuk sini 1");
+	                
 	                // Call updateOffAndSemiOff method
 	                updateOffAndSemiOff(updatedWorkHoursSpecific, formattedDate, workHoursSpecific.getDESCRIPTION());
+
+	                System.out.println("Masuk sini 2");
 
 	                return updatedWorkHoursSpecific;
 	            } else {
@@ -298,7 +308,6 @@ public class DWorkDayHoursSpecificServiceImpl {
 	        }
 	    }
 
-	    // Menghapus entri jam kerja spesifik
 	    public DWorkDayHoursSpesific deleteWorkDayHoursSpecific(DWorkDayHoursSpesific workHoursSpecific) {
 	        try {
 	            Optional<DWorkDayHoursSpesific> currentWorkHoursSpecificOpt =
@@ -490,20 +499,19 @@ public class DWorkDayHoursSpecificServiceImpl {
                 case 1:
                 	BigDecimal shift1TotalTime = calculateTotalTime(startTime, endTime);
 
-                    // Menggunakan zona waktu UTC
                     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
                     calendar.setTime(workHoursSpecific.getDATE_WD());
 
-                    System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); // Debug log untuk memastikan hari yang benar
+                    System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); 
 
                     if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
                         // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
-                        Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); // Set zona waktu ke UTC
-                        baseDate.setTime(workHoursSpecific.getDATE_WD()); // Menggunakan tanggal dari workHoursSpecific
+                        Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); 
+                        baseDate.setTime(workHoursSpecific.getDATE_WD()); 
                         Calendar startTimee = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
                         Calendar endTimee = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
 
-                     // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
+                        // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
                         Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
                         breakStart.setTime(workHoursSpecific.getDATE_WD());
                         breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
@@ -522,12 +530,11 @@ public class DWorkDayHoursSpecificServiceImpl {
                         breakEnd.setTimeZone(wibTimeZone);
 
                         // Debug log untuk memastikan jam sudah diatur dengan benar
-                        System.out.println("Break Start: " + breakStart.getTime()); // Debugging
-                        System.out.println("Break End: " + breakEnd.getTime());   // Debugging
+                        System.out.println("Break Start: " + breakStart.getTime()); 
+                        System.out.println("Break End: " + breakEnd.getTime());   
 
-
-                        System.out.println("start time: " + startTimee.getTime()); // Debug log
-                        System.out.println("end time: " + endTimee.getTime()); // Debug log
+                        System.out.println("start time: " + startTimee.getTime()); 
+                        System.out.println("end time: " + endTimee.getTime()); 
 
                         // Jika waktu mulai dan selesai melewati jam istirahat
                         if (startTimee.before(breakEnd) && endTimee.after(breakStart)) {
@@ -537,7 +544,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                                 long overlapDurationMillis = overlapEnd - overlapStart;
                                 long overlapDurationMinutes = overlapDurationMillis / 60000;
                                 shift1TotalTime = shift1TotalTime.subtract(new BigDecimal(overlapDurationMinutes));
-                                System.out.println("Updated shift1TotalTime: " + shift1TotalTime); // Debugging
+                                System.out.println("Updated shift1TotalTime: " + shift1TotalTime); 
                             }
                         }
                     }
@@ -545,7 +552,6 @@ public class DWorkDayHoursSpecificServiceImpl {
                     workHoursSpecific.setSHIFT1_START_TIME(startTime);
                     workHoursSpecific.setSHIFT1_END_TIME(endTime);
                     workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
-
                     break;
                 case 2:
                     workHoursSpecific.setSHIFT2_START_TIME(startTime);
@@ -573,99 +579,448 @@ public class DWorkDayHoursSpecificServiceImpl {
             return Optional.empty();
         }
     }
-  
     
+    public Optional<DWorkDayHoursSpesific> updateShiftTimesforWd(String startTime, String endTime, String parsedDate, String description, int shift) throws Exception {
+        Optional<DWorkDayHoursSpesific> workHoursSpecificOpt = dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(parsedDate, description);
+
+        if (workHoursSpecificOpt.isPresent()) {
+            DWorkDayHoursSpesific workHoursSpecific = workHoursSpecificOpt.get();
+
+            switch (shift) {
+                case 1:
+                	BigDecimal shift1TotalTime = calculateTotalTime(startTime, endTime);
+
+                    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                    calendar.setTime(workHoursSpecific.getDATE_WD());
+
+                    System.out.println("Day of Week: " + calendar.get(Calendar.DAY_OF_WEEK)); 
+
+                    if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) {
+                        // Mengonversi start dan end time dari String ke Calendar menggunakan baseDate
+                        Calendar baseDate = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta")); 
+                        baseDate.setTime(workHoursSpecific.getDATE_WD()); 
+                        Calendar startTimee = convertToCalendar(workHoursSpecific.getSHIFT1_START_TIME(), baseDate);
+                        Calendar endTimee = convertToCalendar(workHoursSpecific.getSHIFT1_END_TIME(), baseDate);
+
+                        // Menggunakan UTC untuk waktu, tetapi setelah itu konversi kembali ke WIB jika perlu
+                        Calendar breakStart = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        breakStart.setTime(workHoursSpecific.getDATE_WD());
+                        breakStart.set(Calendar.HOUR_OF_DAY, 11); // Jam 11
+                        breakStart.set(Calendar.MINUTE, 40);     // Menit 40
+                        breakStart.set(Calendar.SECOND, 0);      // Detik 0
+
+                        Calendar breakEnd = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        breakEnd.setTime(workHoursSpecific.getDATE_WD());
+                        breakEnd.set(Calendar.HOUR_OF_DAY, 12);   // Jam 12
+                        breakEnd.set(Calendar.MINUTE, 40);        // Menit 40
+                        breakEnd.set(Calendar.SECOND, 0);         // Detik 0
+
+                        // Konversi ke zona waktu WIB jika diperlukan
+                        TimeZone wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta");
+                        breakStart.setTimeZone(wibTimeZone);
+                        breakEnd.setTimeZone(wibTimeZone);
+
+                        // Debug log untuk memastikan jam sudah diatur dengan benar
+                        System.out.println("Break Start: " + breakStart.getTime()); 
+                        System.out.println("Break End: " + breakEnd.getTime());   
+
+                        System.out.println("start time: " + startTimee.getTime()); 
+                        System.out.println("end time: " + endTimee.getTime()); 
+
+                        // Jika waktu mulai dan selesai melewati jam istirahat
+                        if (startTimee.before(breakEnd) && endTimee.after(breakStart)) {
+                            long overlapStart = Math.max(startTimee.getTimeInMillis(), breakStart.getTimeInMillis());
+                            long overlapEnd = Math.min(endTimee.getTimeInMillis(), breakEnd.getTimeInMillis());
+                            if (overlapStart < overlapEnd) {
+                                long overlapDurationMillis = overlapEnd - overlapStart;
+                                long overlapDurationMinutes = overlapDurationMillis / 60000;
+                                shift1TotalTime = shift1TotalTime.subtract(new BigDecimal(overlapDurationMinutes));
+                                System.out.println("Updated shift1TotalTime: " + shift1TotalTime); 
+                            }
+                        }
+                    }
+		            
+                    workHoursSpecific.setSHIFT1_START_TIME(startTime);
+                    workHoursSpecific.setSHIFT1_END_TIME(endTime);
+                    workHoursSpecific.setSHIFT1_TOTAL_TIME(shift1TotalTime);
+                    break;
+                case 2:
+                    workHoursSpecific.setSHIFT2_START_TIME(startTime);
+                    workHoursSpecific.setSHIFT2_END_TIME(endTime);
+                    workHoursSpecific.setSHIFT2_TOTAL_TIME(calculateTotalTime(startTime, endTime));
+                    break;
+                case 3:
+                    workHoursSpecific.setSHIFT3_START_TIME(startTime);
+                    workHoursSpecific.setSHIFT3_END_TIME(endTime);
+                    workHoursSpecific.setSHIFT3_TOTAL_TIME(calculateTotalTime(startTime, endTime));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid shift specified: " + shift);
+            }
+
+            workHoursSpecific.setLAST_UPDATE_DATE(new Date());
+            dWorkDayHoursSpecificRepo.save(workHoursSpecific);
+            
+            System.out.println("Shift " + shift + " updated successfully.");
+            return Optional.of(workHoursSpecific);
+        } else {
+            System.out.println("No WorkDayHoursSpecific record found for date: " + parsedDate);
+            return Optional.empty();
+        }
+    }
+    
+//    private void updateOffAndSemiOff(DWorkDayHoursSpesific dWorkDayHoursSpecific, String dateWd, String description) {
+//    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//        LocalDate localDate = LocalDate.parse(dateWd, formatter);
+//        String nextDateStr = localDate.plusDays(1).format(formatter);
+//    	
+//    	Optional<WorkDay> workDayOpt = workDayRepo.findByDDateWd(dateWd);
+//        List<DWorkDayHoursSpesific> workHoursSpecificOpt = dWorkDayHoursSpecificRepo.findDWdHoursListByDate(dateWd);
+//        List<DWorkDayHoursSpesific> workHoursSpecificOpttomorrow = 
+//        	    dWorkDayHoursSpecificRepo.findDWdHoursListByDate(nextDateStr);
+//
+//        workDayOpt.ifPresentOrElse(workDay -> {
+//            // Ambil total waktu dari setiap shift
+//            BigDecimal shift1 = dWorkDayHoursSpecific.getSHIFT1_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT1_TOTAL_TIME() : BigDecimal.ZERO;
+//            BigDecimal shift2 = dWorkDayHoursSpecific.getSHIFT2_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT2_TOTAL_TIME() : BigDecimal.ZERO;
+//            BigDecimal shift3 = dWorkDayHoursSpecific.getSHIFT3_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT3_TOTAL_TIME() : BigDecimal.ZERO;
+//
+//            // Log nilai shift
+//            System.out.println("Shift1: " + shift1);
+//            System.out.println("Shift2: " + shift2);
+//            System.out.println("Shift3: " + shift3);
+//
+//            DayOfWeek dayOfWeek = getDayOfWeekFromDate(dateWd);
+//
+//            // Apply logic based on the description parameter
+//            if ("WD_NORMAL".equals(description)) {
+//                // Set IWD_SHIFT_1, IWD_SHIFT_2, IWD_SHIFT_3 based on shift times
+//                workDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                System.out.println("IWD_SHIFT_1: " + workDay.getIWD_SHIFT_1());
+//                System.out.println("IWD_SHIFT_2: " + workDay.getIWD_SHIFT_2());
+//                System.out.println("IWD_SHIFT_3: " + workDay.getIWD_SHIFT_3());
+//            } else if ("OT_TT".equals(description)) {
+//                // Apply logic for OT_TT (Overtime Total Time)
+//                workDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                System.out.println("IOT_TT_1: " + workDay.getIOT_TT_1());
+//                System.out.println("IOT_TT_2: " + workDay.getIOT_TT_2());
+//                System.out.println("IOT_TT_3: " + workDay.getIOT_TT_3());
+//            } else if ("OT_TL".equals(description)) {
+//                // Apply logic for OT_TL (Overtime Total Leave)
+//                workDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                workDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                System.out.println("IOT_TL_1: " + workDay.getIOT_TL_1());
+//                System.out.println("IOT_TL_2: " + workDay.getIOT_TL_2());
+//                System.out.println("IOT_TL_3: " + workDay.getIOT_TL_3());
+//            }
+//
+//            // Log and update OFF and SEMI_OFF based on the day of the week and shift times
+//            if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+//                workDay.setOFF(BigDecimal.ONE);
+//                workDay.setSEMI_OFF(BigDecimal.ZERO);
+//            } else if (dayOfWeek == DayOfWeek.MONDAY) {
+//                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0) {
+//                    workDay.setOFF(BigDecimal.ZERO);
+//                    workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0) {
+//                    workDay.setOFF(BigDecimal.ONE);
+//                    workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                } else {
+//                    workDay.setOFF(BigDecimal.ZERO);
+//                    workDay.setSEMI_OFF(BigDecimal.ONE);
+//                }
+//            } else if (dayOfWeek.getValue() >= DayOfWeek.TUESDAY.getValue() && dayOfWeek.getValue() <= DayOfWeek.FRIDAY.getValue()) {
+//            	System.out.println("masuk sini 1");
+//                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) == 0) {
+//                    workDay.setOFF(BigDecimal.ONE);
+//                    workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                	System.out.println("masuk sini 2");
+//                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) > 0) {
+//                    workDay.setOFF(BigDecimal.ZERO);
+//                    workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                	System.out.println("masuk sini 3");
+//                } else {
+//                    workDay.setOFF(BigDecimal.ZERO);
+//                    workDay.setSEMI_OFF(BigDecimal.ONE);
+//                	System.out.println("masuk sini 4");
+//
+//                }
+//            }
+//
+//            System.out.println("SEMI_OFF value: " + workDay.getSEMI_OFF());
+//            System.out.println("OFF value: " + workDay.getOFF());
+//
+//            workDayRepo.save(workDay);
+//        }, () -> {
+//            throw new RuntimeException("WorkDay with date " + dateWd + " not found.");
+//        });
+//    }
+
+//    private void updateOffAndSemiOff(DWorkDayHoursSpesific dWorkDayHoursSpecific, String dateWd, String description) {
+//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//        LocalDate localDate = LocalDate.parse(dateWd, formatter);
+//        String nextDateStr = localDate.plusDays(1).format(formatter);
+//
+//        Optional<WorkDay> workDayOpt = workDayRepo.findByDDateWd(dateWd);
+//        List<DWorkDayHoursSpesific> workHoursSpecificOpt = dWorkDayHoursSpecificRepo.findDWdHoursListByDate(dateWd);
+//        List<DWorkDayHoursSpesific> workHoursSpecificOpttomorrow = 
+//        		dWorkDayHoursSpecificRepo.findDWdHoursListByDate(nextDateStr);
+//
+//        workDayOpt.ifPresentOrElse(workDay -> {
+//            // Looping melalui data dari workHoursSpecificOpt untuk memeriksa setiap shift
+//            for (DWorkDayHoursSpesific workHours : workHoursSpecificOpt) {
+//                // Ambil total waktu dari setiap shift pada hari ini
+//                BigDecimal shift1 = workHours.getSHIFT1_TOTAL_TIME() != null ? workHours.getSHIFT1_TOTAL_TIME() : BigDecimal.ZERO;
+//                BigDecimal shift2 = workHours.getSHIFT2_TOTAL_TIME() != null ? workHours.getSHIFT2_TOTAL_TIME() : BigDecimal.ZERO;
+//                BigDecimal shift3 = BigDecimal.ZERO;
+//
+//                Optional<DWorkDayHoursSpesific> tomorrowShiftOpt = dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(dateWd, workHours.getDESCRIPTION());
+//                if (tomorrowShiftOpt.isPresent()) {
+//                    shift3 = tomorrowShiftOpt.get().getSHIFT3_TOTAL_TIME() != null ? tomorrowShiftOpt.get().getSHIFT3_TOTAL_TIME() : BigDecimal.ZERO;
+//                }
+//                
+//                // Log nilai shift
+//                System.out.println("Shift1: " + shift1);
+//                System.out.println("Shift2: " + shift2);
+//                System.out.println("Shift3 (from tomorrow): " + shift3);
+//
+//                DayOfWeek dayOfWeek = getDayOfWeekFromDate(dateWd);
+//
+//                // Apply logic based on the description parameter
+//                if ("WD_NORMAL".equals(workHours.getDESCRIPTION())) {
+//                    // Logika untuk shift1, shift2, shift3
+//                    workDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                    System.out.println("IWD_SHIFT_1: " + workDay.getIWD_SHIFT_1());
+//                    System.out.println("IWD_SHIFT_2: " + workDay.getIWD_SHIFT_2());
+//                    System.out.println("IWD_SHIFT_3: " + workDay.getIWD_SHIFT_3());
+//                    
+//                 // Logika untuk menentukan OFF dan SEMI_OFF
+//                    if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+//                        // Sabtu dan Minggu OFF = 1, SEMI_OFF = 0
+//                        workDay.setOFF(BigDecimal.ONE);
+//                        workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                    } else if (dayOfWeek == DayOfWeek.MONDAY) {
+//                        // Hari Senin OFF dan SEMI_OFF berdasarkan shift1, shift2, shift3
+//                        if (shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) == 0 && shift3.compareTo(BigDecimal.ZERO) == 0) {
+//                            workDay.setOFF(BigDecimal.ONE);
+//                            workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                        } else if ((shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) > 0) || 
+//                                   (shift1.compareTo(BigDecimal.ZERO) > 0 && shift2.compareTo(BigDecimal.ZERO) == 0) || 
+//                                   (shift3.compareTo(BigDecimal.ZERO) > 0)) {
+//                            workDay.setOFF(BigDecimal.ZERO);
+//                            workDay.setSEMI_OFF(BigDecimal.ONE);
+//                        } else {
+//                            workDay.setOFF(BigDecimal.ZERO);
+//                            workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                        }
+//                    } else if (dayOfWeek.getValue() >= DayOfWeek.TUESDAY.getValue() && dayOfWeek.getValue() <= DayOfWeek.FRIDAY.getValue()) {
+//                        // Hari Selasa - Jumat OFF dan SEMI_OFF berdasarkan shift1, shift2, shift3
+//                        if (shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) == 0 && shift3.compareTo(BigDecimal.ZERO) == 0) {
+//                            workDay.setOFF(BigDecimal.ONE);
+//                            workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                        } else if ((shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) > 0) || 
+//                                   (shift1.compareTo(BigDecimal.ZERO) > 0 && shift2.compareTo(BigDecimal.ZERO) == 0) || 
+//                                   (shift3.compareTo(BigDecimal.ZERO) > 0)) {
+//                            workDay.setOFF(BigDecimal.ZERO);
+//                            workDay.setSEMI_OFF(BigDecimal.ONE);
+//                        } else {
+//                            workDay.setOFF(BigDecimal.ZERO);
+//                            workDay.setSEMI_OFF(BigDecimal.ZERO);
+//                        }
+//                    }
+//                }else if ("OT_TT".equals(workHours.getDESCRIPTION())) {
+//                    // Apply logic for OT_TT (Overtime Total Time)
+//                    workDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                    System.out.println("IOT_TT_1: " + workDay.getIOT_TT_1());
+//                    System.out.println("IOT_TT_2: " + workDay.getIOT_TT_2());
+//                    System.out.println("IOT_TT_3: " + workDay.getIOT_TT_3());
+//                } else if ("OT_TL".equals(workHours.getDESCRIPTION())) {
+//                    // Apply logic for OT_TL (Overtime Total Leave)
+//                    workDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//                    workDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+//
+//                    System.out.println("IOT_TL_1: " + workDay.getIOT_TL_1());
+//                    System.out.println("IOT_TL_2: " + workDay.getIOT_TL_2());
+//                    System.out.println("IOT_TL_3: " + workDay.getIOT_TL_3());
+//                }
+//
+//                System.out.println("SEMI_OFF value: " + workDay.getSEMI_OFF());
+//                System.out.println("OFF value: " + workDay.getOFF());
+//            }
+//
+//            workDayRepo.save(workDay);
+//        }, () -> {
+//            throw new RuntimeException("WorkDay with date " + dateWd + " not found.");
+//        });
+//    }
+
+    
+    private DayOfWeek getDayOfWeekFromDate(String dateWd) {
+        return LocalDate.parse(dateWd, DateTimeFormatter.ofPattern("dd-MM-yyyy")).getDayOfWeek();
+    }
+
     private void updateOffAndSemiOff(DWorkDayHoursSpesific dWorkDayHoursSpecific, String dateWd, String description) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        LocalDate localDate = LocalDate.parse(dateWd, formatter);
+        String prevDateStr = localDate.minusDays(1).format(formatter);
+        String nextDateStr = localDate.plusDays(1).format(formatter);
+
+        // Data untuk hari sebelumnya, hari ini, dan besok
+        List<DWorkDayHoursSpesific> workHoursSpecificYesterday = dWorkDayHoursSpecificRepo.findDWdHoursListByDate(prevDateStr);
+        List<DWorkDayHoursSpesific> workHoursSpecificOptnow = dWorkDayHoursSpecificRepo.findDWdHoursListByDate(dateWd);
+        List<DWorkDayHoursSpesific> workHoursSpecificOpttomorrow = dWorkDayHoursSpecificRepo.findDWdHoursListByDate(nextDateStr);
+
+        // Mengambil workDay untuk hari sebelumnya
+        Optional<WorkDay> prevWorkDayOpt = workDayRepo.findByDDateWd(prevDateStr);
+        // Mengambil workDay untuk hari ini
         Optional<WorkDay> workDayOpt = workDayRepo.findByDDateWd(dateWd);
 
+    	System.out.println(prevWorkDayOpt);
+
+        // Proses logika untuk hari sebelumnya
+        prevWorkDayOpt.ifPresent(prevWorkDay -> {
+        	System.out.println("Masuk sini a");
+        	WorkDay currentPrevWorkDay = prevWorkDayOpt.get();
+        	System.out.println("Masuk sini b");
+
+            for (DWorkDayHoursSpesific workHours : workHoursSpecificYesterday) {
+                BigDecimal shift1 = workHours.getSHIFT1_TOTAL_TIME() != null ? workHours.getSHIFT1_TOTAL_TIME() : BigDecimal.ZERO;
+                BigDecimal shift2 = workHours.getSHIFT2_TOTAL_TIME() != null ? workHours.getSHIFT2_TOTAL_TIME() : BigDecimal.ZERO;
+                BigDecimal shift3 = BigDecimal.ZERO;
+            	System.out.println("Masuk sini c");
+                // Ambil shift3 dari hari ini
+                Optional<DWorkDayHoursSpesific> todayShiftOpt = dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(dateWd, workHours.getDESCRIPTION());
+                if (todayShiftOpt.isPresent()) {
+                    shift3 = todayShiftOpt.get().getSHIFT3_TOTAL_TIME() != null ? todayShiftOpt.get().getSHIFT3_TOTAL_TIME() : BigDecimal.ZERO;
+                }
+
+                DayOfWeek prevDayOfWeek = getDayOfWeekFromDate(prevDateStr);
+
+                // Logika untuk hari sebelumnya
+                if ("WD_NORMAL".equals(workHours.getDESCRIPTION())) {
+                	currentPrevWorkDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    // Tentukan OFF dan SEMI_OFF
+                    if (prevDayOfWeek == DayOfWeek.SATURDAY || prevDayOfWeek == DayOfWeek.SUNDAY) {
+                    	currentPrevWorkDay.setOFF(BigDecimal.ONE);
+                    	currentPrevWorkDay.setSEMI_OFF(BigDecimal.ZERO);
+                    } else {
+                        // Logika OFF dan SEMI_OFF lainnya
+                    	System.out.println("Shift 3 prev :" + shift3);
+                        determineOffAndSemiOff(currentPrevWorkDay, prevDayOfWeek, shift1, shift2, shift3);
+                    }
+                }else if ("OT_TT".equals(workHours.getDESCRIPTION())) {
+                    // Apply logic for OT_TT (Overtime Total Time)
+                	currentPrevWorkDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    System.out.println("IOT_TT_1: " + currentPrevWorkDay.getIOT_TT_1());
+                    System.out.println("IOT_TT_2: " + currentPrevWorkDay.getIOT_TT_2());
+                    System.out.println("IOT_TT_3: " + currentPrevWorkDay.getIOT_TT_3());
+                } else if ("OT_TL".equals(workHours.getDESCRIPTION())) {
+                    // Apply logic for OT_TL (Overtime Total Leave)
+                	currentPrevWorkDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    System.out.println("IOT_TL_1: " + currentPrevWorkDay.getIOT_TL_1());
+                    System.out.println("IOT_TL_2: " + currentPrevWorkDay.getIOT_TL_2());
+                    System.out.println("IOT_TL_3: " + currentPrevWorkDay.getIOT_TL_3());
+                }
+            }
+        	System.out.println("Masuk sini d");
+            workDayRepo.save(currentPrevWorkDay);
+        });
+
+        // Proses logika untuk hari ini
         workDayOpt.ifPresentOrElse(workDay -> {
-            // Ambil total waktu dari setiap shift
-            BigDecimal shift1 = dWorkDayHoursSpecific.getSHIFT1_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT1_TOTAL_TIME() : BigDecimal.ZERO;
-            BigDecimal shift2 = dWorkDayHoursSpecific.getSHIFT2_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT2_TOTAL_TIME() : BigDecimal.ZERO;
-            BigDecimal shift3 = dWorkDayHoursSpecific.getSHIFT3_TOTAL_TIME() != null ? dWorkDayHoursSpecific.getSHIFT3_TOTAL_TIME() : BigDecimal.ZERO;
+            for (DWorkDayHoursSpesific workHours : workHoursSpecificOptnow) {
+                BigDecimal shift1 = workHours.getSHIFT1_TOTAL_TIME() != null ? workHours.getSHIFT1_TOTAL_TIME() : BigDecimal.ZERO;
+                BigDecimal shift2 = workHours.getSHIFT2_TOTAL_TIME() != null ? workHours.getSHIFT2_TOTAL_TIME() : BigDecimal.ZERO;
+                BigDecimal shift3 = BigDecimal.ZERO;
 
-            // Log nilai shift
-            System.out.println("Shift1: " + shift1);
-            System.out.println("Shift2: " + shift2);
-            System.out.println("Shift3: " + shift3);
+                Optional<DWorkDayHoursSpesific> tomorrowShiftOpt = dWorkDayHoursSpecificRepo.findDWdHoursByDateAndDescription(nextDateStr, workHours.getDESCRIPTION());
 
-            DayOfWeek dayOfWeek = getDayOfWeekFromDate(dateWd);
-
-            // Apply logic based on the description parameter
-            if ("WD_NORMAL".equals(description)) {
-                // Set IWD_SHIFT_1, IWD_SHIFT_2, IWD_SHIFT_3 based on shift times
-                workDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-
-                System.out.println("IWD_SHIFT_1: " + workDay.getIWD_SHIFT_1());
-                System.out.println("IWD_SHIFT_2: " + workDay.getIWD_SHIFT_2());
-                System.out.println("IWD_SHIFT_3: " + workDay.getIWD_SHIFT_3());
-            } else if ("OT_TT".equals(description)) {
-                // Apply logic for OT_TT (Overtime Total Time)
-                workDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-
-                System.out.println("IOT_TT_1: " + workDay.getIOT_TT_1());
-                System.out.println("IOT_TT_2: " + workDay.getIOT_TT_2());
-                System.out.println("IOT_TT_3: " + workDay.getIOT_TT_3());
-            } else if ("OT_TL".equals(description)) {
-                // Apply logic for OT_TL (Overtime Total Leave)
-                workDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                workDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-
-                System.out.println("IOT_TL_1: " + workDay.getIOT_TL_1());
-                System.out.println("IOT_TL_2: " + workDay.getIOT_TL_2());
-                System.out.println("IOT_TL_3: " + workDay.getIOT_TL_3());
-            }
-
-            // Log and update OFF and SEMI_OFF based on the day of the week and shift times
-            if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
-                workDay.setOFF(BigDecimal.ONE);
-                workDay.setSEMI_OFF(BigDecimal.ZERO);
-            } else if (dayOfWeek == DayOfWeek.MONDAY) {
-                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0) {
-                    workDay.setOFF(BigDecimal.ZERO);
-                    workDay.setSEMI_OFF(BigDecimal.ZERO);
-                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0) {
-                    workDay.setOFF(BigDecimal.ONE);
-                    workDay.setSEMI_OFF(BigDecimal.ZERO);
-                } else {
-                    workDay.setOFF(BigDecimal.ZERO);
-                    workDay.setSEMI_OFF(BigDecimal.ONE);
+                if (tomorrowShiftOpt.isPresent()) {
+                    shift3 = tomorrowShiftOpt.get().getSHIFT3_TOTAL_TIME() != null ? tomorrowShiftOpt.get().getSHIFT3_TOTAL_TIME() : BigDecimal.ZERO;
                 }
-            } else if (dayOfWeek.getValue() >= DayOfWeek.TUESDAY.getValue() && dayOfWeek.getValue() <= DayOfWeek.FRIDAY.getValue()) {
-            	System.out.println("masuk sini 1");
-                if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) == 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) == 0) {
-                    workDay.setOFF(BigDecimal.ONE);
-                    workDay.setSEMI_OFF(BigDecimal.ZERO);
-                	System.out.println("masuk sini 2");
-                } else if (workDay.getIWD_SHIFT_1().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_2().compareTo(BigDecimal.ZERO) > 0 && workDay.getIWD_SHIFT_3().compareTo(BigDecimal.ZERO) > 0) {
-                    workDay.setOFF(BigDecimal.ZERO);
-                    workDay.setSEMI_OFF(BigDecimal.ZERO);
-                	System.out.println("masuk sini 3");
-                } else {
-                    workDay.setOFF(BigDecimal.ZERO);
-                    workDay.setSEMI_OFF(BigDecimal.ONE);
-                	System.out.println("masuk sini 4");
 
+                DayOfWeek todayDayOfWeek = getDayOfWeekFromDate(dateWd);
+
+                if ("WD_NORMAL".equals(workHours.getDESCRIPTION())) {
+                    workDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    // Tentukan OFF dan SEMI_OFF
+                    if (todayDayOfWeek == DayOfWeek.SATURDAY || todayDayOfWeek == DayOfWeek.SUNDAY) {
+                        workDay.setOFF(BigDecimal.ONE);
+                        workDay.setSEMI_OFF(BigDecimal.ZERO);
+                    } else {
+                        // Logika OFF dan SEMI_OFF lainnya
+                    	System.out.println("Shift 3 now :" + shift3);
+                        determineOffAndSemiOff(workDay, todayDayOfWeek, shift1, shift2, shift3);
+                    }
+                }else if ("OT_TT".equals(workHours.getDESCRIPTION())) {
+                    // Apply logic for OT_TT (Overtime Total Time)
+                    workDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    System.out.println("IOT_TT_1: " + workDay.getIOT_TT_1());
+                    System.out.println("IOT_TT_2: " + workDay.getIOT_TT_2());
+                    System.out.println("IOT_TT_3: " + workDay.getIOT_TT_3());
+                } else if ("OT_TL".equals(workHours.getDESCRIPTION())) {
+                    // Apply logic for OT_TL (Overtime Total Leave)
+                    workDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+
+                    System.out.println("IOT_TL_1: " + workDay.getIOT_TL_1());
+                    System.out.println("IOT_TL_2: " + workDay.getIOT_TL_2());
+                    System.out.println("IOT_TL_3: " + workDay.getIOT_TL_3());
                 }
             }
-
-            System.out.println("SEMI_OFF value: " + workDay.getSEMI_OFF());
-            System.out.println("OFF value: " + workDay.getOFF());
-
             workDayRepo.save(workDay);
         }, () -> {
             throw new RuntimeException("WorkDay with date " + dateWd + " not found.");
         });
     }
 
-
-    private DayOfWeek getDayOfWeekFromDate(String dateWd) {
-        return LocalDate.parse(dateWd, DateTimeFormatter.ofPattern("dd-MM-yyyy")).getDayOfWeek();
+    private void determineOffAndSemiOff(WorkDay workDay, DayOfWeek dayOfWeek, BigDecimal shift1, BigDecimal shift2, BigDecimal shift3) {
+            if (shift1.compareTo(BigDecimal.ZERO) == 0 && shift2.compareTo(BigDecimal.ZERO) == 0 && shift3.compareTo(BigDecimal.ZERO) == 0) {
+                workDay.setOFF(BigDecimal.ONE);
+                workDay.setSEMI_OFF(BigDecimal.ZERO);
+            } else if ((shift1.compareTo(BigDecimal.ZERO) > 0 || 
+                    shift2.compareTo(BigDecimal.ZERO) > 0 || 
+                    shift3.compareTo(BigDecimal.ZERO) > 0) && 
+                   !(shift1.compareTo(BigDecimal.ZERO) > 0 && 
+                     shift2.compareTo(BigDecimal.ZERO) > 0 && 
+                     shift3.compareTo(BigDecimal.ZERO) > 0)) {
+              workDay.setOFF(BigDecimal.ZERO);
+              workDay.setSEMI_OFF(BigDecimal.ONE);
+          } else {
+                workDay.setOFF(BigDecimal.ZERO);
+                workDay.setSEMI_OFF(BigDecimal.ZERO);
+            }
     }
 
 }

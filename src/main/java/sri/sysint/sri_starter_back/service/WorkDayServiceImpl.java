@@ -123,7 +123,6 @@ public class WorkDayServiceImpl {
                 }
             }
 
-            // Call updateOffAndSemiOff with parsed LocalDate
             updateOffAndSemiOffSU(workDay, dateWD);
 
             return workDayRepo.save(workDay);
@@ -142,7 +141,6 @@ public class WorkDayServiceImpl {
             if (currentWorkDayOpt.isPresent()) {
                 WorkDay currentWorkDay = currentWorkDayOpt.get();
 
-                // Update shift values
                 currentWorkDay.setIWD_SHIFT_1(workDay.getIWD_SHIFT_1());
                 currentWorkDay.setIWD_SHIFT_2(workDay.getIWD_SHIFT_2());
                 currentWorkDay.setIWD_SHIFT_3(workDay.getIWD_SHIFT_3());
@@ -169,13 +167,15 @@ public class WorkDayServiceImpl {
                     }
                 }
 
-                updateOffAndSemiOffSU(currentWorkDay, dateWD);
-//                updateSpesificHour(currentWorkDay, workDay.getDATE_WD());
-                
+                updateOffAndSemiOffSU(currentWorkDay, dateWD);                
                 currentWorkDay.setLAST_UPDATE_DATE(new Date());
                 currentWorkDay.setLAST_UPDATED_BY(workDay.getLAST_UPDATED_BY());
 
-                return workDayRepo.save(currentWorkDay);
+                workDayRepo.save(currentWorkDay);
+                
+                updateSpesificHour(currentWorkDay, workDay.getDATE_WD());
+                
+                return currentWorkDay;
             } else {
                 throw new RuntimeException("WorkDay with date " + workDay.getDATE_WD() + " not found.");
             }
@@ -492,7 +492,6 @@ public class WorkDayServiceImpl {
         BigDecimal shift2 = workDay.getIWD_SHIFT_2();
         BigDecimal shift3 = workDay.getIWD_SHIFT_3();
 
-        // Get the day of the week
         DayOfWeek dayOfWeek = dateWd.getDayOfWeek();
 
         // Logic for Saturday and Sunday
@@ -575,7 +574,6 @@ public class WorkDayServiceImpl {
                 workDay.setOFF(BigDecimal.ZERO);
                 workDay.setSEMI_OFF(BigDecimal.ZERO);
             } else {
-            	
                 // Campuran aktif/non-aktif
                 workDay.setOFF(BigDecimal.ZERO);
                 workDay.setSEMI_OFF(BigDecimal.ONE);
@@ -632,7 +630,7 @@ public class WorkDayServiceImpl {
                 	System.out.println("Masuk update hours spc");
                     DWorkDayHoursSpesific currentWorkHoursSpecific = currentWorkHoursSpecificOpt.get();
 
-                    dWorkDayHoursSpecificServiceImpl.updateShiftTimes(startTime, endTime, formattedDate, description, Integer.parseInt(shiftFieldName.split("_")[2]));
+                    dWorkDayHoursSpecificServiceImpl.updateShiftTimesforWd(startTime, endTime, formattedDate, description, Integer.parseInt(shiftFieldName.split("_")[2]));
                 }
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 throw new Exception("Error accessing field: " + shiftFieldName, e);
