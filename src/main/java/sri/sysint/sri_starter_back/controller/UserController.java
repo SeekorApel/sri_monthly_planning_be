@@ -134,7 +134,7 @@ public class UserController {
 	                new Date(),
 	                HttpStatus.NOT_FOUND.value(),
 	                null,
-	                HttpStatus.NOT_FOUND.getReasonPhrase(),
+	                "User not found",
 	                req.getRequestURI(),
 	                null
 	        );
