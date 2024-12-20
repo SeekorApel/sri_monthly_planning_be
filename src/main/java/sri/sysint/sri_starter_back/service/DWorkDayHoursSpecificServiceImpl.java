@@ -915,7 +915,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                 if ("WD_NORMAL".equals(workHours.getDESCRIPTION())) {
                 	currentPrevWorkDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                 	currentPrevWorkDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                	currentPrevWorkDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIWD_SHIFT_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     // Tentukan OFF dan SEMI_OFF
                     if (prevDayOfWeek == DayOfWeek.SATURDAY || prevDayOfWeek == DayOfWeek.SUNDAY) {
@@ -930,7 +930,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                     // Apply logic for OT_TT (Overtime Total Time)
                 	currentPrevWorkDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                 	currentPrevWorkDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                	currentPrevWorkDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TT_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     System.out.println("IOT_TT_1: " + currentPrevWorkDay.getIOT_TT_1());
                     System.out.println("IOT_TT_2: " + currentPrevWorkDay.getIOT_TT_2());
@@ -939,7 +939,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                     // Apply logic for OT_TL (Overtime Total Leave)
                 	currentPrevWorkDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                 	currentPrevWorkDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                	currentPrevWorkDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                	currentPrevWorkDay.setIOT_TL_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     System.out.println("IOT_TL_1: " + currentPrevWorkDay.getIOT_TL_1());
                     System.out.println("IOT_TL_2: " + currentPrevWorkDay.getIOT_TL_2());
@@ -968,7 +968,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                 if ("WD_NORMAL".equals(workHours.getDESCRIPTION())) {
                     workDay.setIWD_SHIFT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                     workDay.setIWD_SHIFT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                    workDay.setIWD_SHIFT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIWD_SHIFT_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     // Tentukan OFF dan SEMI_OFF
                     if (todayDayOfWeek == DayOfWeek.SATURDAY || todayDayOfWeek == DayOfWeek.SUNDAY) {
@@ -983,7 +983,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                     // Apply logic for OT_TT (Overtime Total Time)
                     workDay.setIOT_TT_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                     workDay.setIOT_TT_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                    workDay.setIOT_TT_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TT_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     System.out.println("IOT_TT_1: " + workDay.getIOT_TT_1());
                     System.out.println("IOT_TT_2: " + workDay.getIOT_TT_2());
@@ -992,7 +992,7 @@ public class DWorkDayHoursSpecificServiceImpl {
                     // Apply logic for OT_TL (Overtime Total Leave)
                     workDay.setIOT_TL_1(shift1.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
                     workDay.setIOT_TL_2(shift2.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
-                    workDay.setIOT_TL_3(shift3.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
+                    workDay.setIOT_TL_3(workHours.getSHIFT3_TOTAL_TIME().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO);
 
                     System.out.println("IOT_TL_1: " + workDay.getIOT_TL_1());
                     System.out.println("IOT_TL_2: " + workDay.getIOT_TL_2());
