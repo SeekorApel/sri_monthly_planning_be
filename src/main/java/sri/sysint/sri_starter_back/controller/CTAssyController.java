@@ -327,12 +327,20 @@ public class CTAssyController {
 							
 
 							boolean hasError = false;
-
+							String[] tableData = {
+									"WIP","DESCRIPTION", "Group Counter", "Var Group Counter", "Sequence", "WCT", "Operation Short Text", 
+									"Operation Unit", "Base Quantity", "Standard Value Unit", "CT SEKON/1PC", "CT HR/1000PC",
+									"normal shift-1", "normal shift-2", "normal shift-3", "FRIDAY 4", "BTOL TOTAL NORMAL","TOTAL FRIDAY",
+									"ALLOWANE normal shift-1", "ALLOWANE normal shift-2", "ALLOWANE normal shift-3", "ALLOWANE Total",
+									"OPERATIONAL TIME normal shift-1", "OPERATIONAL TIME normal shift-2", "OPERATIONAL TIME normal shift-3", "OPERATIONAL TIME Jumat shift-1", "OPERATIONAL TIME TOTAL NORMAL","OPERATIONAL TIME TOTAL FRIDAY",
+									"KAPASITAS NORMAL SHIFT 1", "KAPASITAS NORMAL SHIFT 2", "KAPASITAS NORMAL SHIFT 3", "KAPASITAS JUMAT Shift 1", "KAPASITAS TOTAL NORMAL", 
+									"KAPASITAS TOTAL FRIDAY","KAPASITAS	WAKTU TOTAL/CT","KAPASITAS WAKTU TOTAL/CT FRIDAY"
+								};
 							// Loop through columns to validate cells
 							for (int col = 0; col <= 34; col++) {
 								Cell cell = row.getCell(col);
 								if (cell == null || cell.getCellType() == CellType.BLANK) {
-									errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom " + (col + 1));
+									errorMessages.add("Data Tidak Valid, Terdapat Data Kosong pada Baris " + (i + 1) + " Kolom " + (col + 1) + " ( " + tableData[col] + " )" );
 									hasError = true;
 								}
 							}
