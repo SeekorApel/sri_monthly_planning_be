@@ -652,7 +652,7 @@ public class MarketingOrderServiceImpl {
 					saveMo.setStatusFilled(BigDecimal.ONE);
 
 				} else {
-				    saveMo.setRevisionPpc(saveMo.getRevisionPpc().add(BigDecimal.ONE));
+					saveMo.setRevisionPpc(saveMo.getRevisionPpc());
 				    saveMo.setStatusFilled(BigDecimal.valueOf(3));
 				}
 

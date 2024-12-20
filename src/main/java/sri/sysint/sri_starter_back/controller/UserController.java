@@ -112,7 +112,7 @@ public class UserController {
 	//START - POST MAPPING
 	@PostMapping("/loginUser")
 	public Response signin(final HttpServletRequest req, @RequestBody Users user) throws ResourceNotFoundException {
-	    Users existingUser = userDetailsServiceImpl.getUserByUserName(user.getUserName());
+	    Users existingUser = userDetailsServiceImpl.getUser(user.getUserName(), user.getPassword());
 
 	    if (existingUser != null) {
 	        String token = JWT.create()
@@ -134,7 +134,7 @@ public class UserController {
 	                new Date(),
 	                HttpStatus.NOT_FOUND.value(),
 	                null,
-	                HttpStatus.NOT_FOUND.getReasonPhrase(),
+	                "User not found",
 	                req.getRequestURI(),
 	                null
 	        );
