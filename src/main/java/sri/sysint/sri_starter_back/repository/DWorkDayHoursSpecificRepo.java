@@ -18,6 +18,10 @@ public interface DWorkDayHoursSpecificRepo extends JpaRepository<DWorkDayHoursSp
 
 	@Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC WHERE TRUNC(DATE_WD) = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
 	Optional<DWorkDayHoursSpesific> findDWdHoursByDate(@Param("id") String id);
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC WHERE TRUNC(DATE_WD) = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
+	List<DWorkDayHoursSpesific> findDWdHoursListByDate(@Param("id") String id);
+
 
     @Query(value = "SELECT * FROM SRI_IMPP_D_WD_HOURS_SPECIFIC ORDER BY DATE_WD ASC", nativeQuery = true)
     List<DWorkDayHoursSpesific> getDataOrderByDateDWd();
