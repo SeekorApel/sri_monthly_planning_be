@@ -313,21 +313,21 @@ public class ProductController {
 	@PostMapping("/saveProductExcel")
 	@Transactional
 	public Response saveProductExcelFile(@RequestParam("file") MultipartFile file, final HttpServletRequest req) throws ResourceNotFoundException {
-	    String header = req.getHeader("Authorization");
-
-	    if (header == null || !header.startsWith("Bearer ")) {
-	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
-	    }
-
-	    String token = header.replace("Bearer ", "");
-
-	    try {
-	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
-	            .build()
-	            .verify(token)
-	            .getSubject();
-
-	        if (user != null) {
+//	    String header = req.getHeader("Authorization");
+//
+//	    if (header == null || !header.startsWith("Bearer ")) {
+//	        throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+//	    }
+//
+//	    String token = header.replace("Bearer ", "");
+//
+//	    try {
+//	        String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+//	            .build()
+//	            .verify(token)
+//	            .getSubject();
+//
+//	        if (user != null) {
 	            if (file.isEmpty()) {
 	                return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, "No file uploaded", req.getRequestURI(), null);
 	            }
@@ -516,14 +516,14 @@ public class ProductController {
 	            } catch (IOException e) {
 	                throw new RuntimeException("Error processing file", e);
 	            }
-	        } else {
-	            throw new ResourceNotFoundException("User not found");
-	        }
-	    } catch (IllegalArgumentException e) {
-	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
-	    } catch (Exception e) {
-	        throw new ResourceNotFoundException("JWT token is not valid or expired");
-	    }
+//	        } else {
+//	            throw new ResourceNotFoundException("User not found");
+//	        }
+//	    } catch (IllegalArgumentException e) {
+//	        return new Response(new Date(), HttpStatus.BAD_REQUEST.value(), null, e.getMessage(), req.getRequestURI(), null);
+//	    } catch (Exception e) {
+//	        throw new ResourceNotFoundException("JWT token is not valid or expired");
+//	    }
 	}
 
 	private boolean isRowEmpty(Row row) {

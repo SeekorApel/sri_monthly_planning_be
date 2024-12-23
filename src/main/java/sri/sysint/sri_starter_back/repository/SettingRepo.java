@@ -33,4 +33,8 @@ public interface SettingRepo extends JpaRepository<Setting, BigDecimal>{
 			+ "FROM SRI_IMPP_M_SETTING \r\n"
 			+ "WHERE SETTING_KEY = 'Capacity' AND STATUS = 1", nativeQuery = true)
 	String getCapacity();
+	
+	
+	@Query(value = "SELECT * FROM SRI_IMPP_M_SETTING WHERE SETTING_KEY = 'Small Order Limit'", nativeQuery = true)
+    Setting findSmallOrderLimit();
 }

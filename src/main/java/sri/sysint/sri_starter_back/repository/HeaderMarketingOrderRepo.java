@@ -9,8 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import sri.sysint.sri_starter_back.model.HeaderMarketingOrder;
-import sri.sysint.sri_starter_back.model.WorkDay; 
+import sri.sysint.sri_starter_back.model.HeaderMarketingOrder; 
 
 
 
@@ -72,6 +71,6 @@ public interface HeaderMarketingOrderRepo extends JpaRepository <HeaderMarketing
     		+ "    		WHERE EXTRACT(MONTH FROM DATE_WD) = :month "
     		+ "    		AND EXTRACT(YEAR FROM DATE_WD) = :year", nativeQuery = true)
 	Map<String, Object> getMonthlyWorkData(@Param("month") int month, @Param("year") int year);
-    
-    
+   
+
 }

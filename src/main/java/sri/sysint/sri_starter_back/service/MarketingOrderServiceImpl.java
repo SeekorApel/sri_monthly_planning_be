@@ -39,6 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sri.sysint.sri_starter_back.repository.MarketingOrderRepo;
+import sri.sysint.sri_starter_back.repository.MonthlyPlanRepo;
 import sri.sysint.sri_starter_back.repository.HeaderMarketingOrderRepo;
 import sri.sysint.sri_starter_back.repository.ItemCuringRepo;
 import sri.sysint.sri_starter_back.repository.ProductRepo;
@@ -47,7 +48,11 @@ import sri.sysint.sri_starter_back.repository.SettingRepo;
 import sri.sysint.sri_starter_back.model.HeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.ItemCuring;
 import sri.sysint.sri_starter_back.model.MarketingOrder;
+import sri.sysint.sri_starter_back.model.MonthlyPlan;
+import sri.sysint.sri_starter_back.model.MonthlyPlanningCuring;
+import sri.sysint.sri_starter_back.model.DetailDailyMonthlyPlanCuring;
 import sri.sysint.sri_starter_back.model.DetailMarketingOrder;
+import sri.sysint.sri_starter_back.model.DetailMonthlyPlanCuring;
 import sri.sysint.sri_starter_back.model.Product;
 import sri.sysint.sri_starter_back.model.ProductType;
 import sri.sysint.sri_starter_back.model.WorkDay;
@@ -55,9 +60,13 @@ import sri.sysint.sri_starter_back.model.transaksi.EditMarketingOrderMarketing;
 import sri.sysint.sri_starter_back.model.transaksi.GetAllTypeMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveFinalMarketingOrder;
 import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
+import sri.sysint.sri_starter_back.model.transaksi.ViewMonthlyPlanning;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewDetailShiftMonthlyPlan;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewMachineCuring;
 import sri.sysint.sri_starter_back.model.view.ViewMarketingOrder;
+import sri.sysint.sri_starter_back.repository.CTCuringRepo;
 import sri.sysint.sri_starter_back.repository.DetailMarketingOrderRepo;
 
 
@@ -69,6 +78,9 @@ public class MarketingOrderServiceImpl {
     private MarketingOrderRepo marketingOrderRepo;
 	
 	@Autowired
+    private MonthlyPlanRepo monthlyPlanningRepo;
+	
+	@Autowired
     private HeaderMarketingOrderRepo headerMarketingOrderRepo;
 	
 	@Autowired
@@ -78,13 +90,16 @@ public class MarketingOrderServiceImpl {
     private ItemCuringRepo itemCuringRepo;
 	
 	@Autowired
-    private ProductRepo productRepo;
-	
-	@Autowired
     private SettingRepo settingRepo;
 	
 	@Autowired
+    private ProductRepo productRepo;
+	
+	@Autowired
     private ProductTypeRepo productTypeRepo;
+	
+	@Autowired
+    private CTCuringRepo ctCuringRepo;
 	
 	public MarketingOrderServiceImpl(MarketingOrderRepo marketingOrderRepo, HeaderMarketingOrderRepo headerMarketingOrderRepo, DetailMarketingOrderRepo detailMarketingOrderRepo){
         this.marketingOrderRepo = marketingOrderRepo;
@@ -2309,6 +2324,189 @@ public class MarketingOrderServiceImpl {
 	        } finally {
 	            out.close(); // Tutup output stream setelah selesai
 	        }
+	    }
+	    
+	    //------------------------------------------------------------------------------------------------------------------
+	    
+	    public List<MonthlyPlan> getAllMp() {
+	    	Iterable<MonthlyPlan> mp = monthlyPlanningRepo.findAll();
+	        List<MonthlyPlan> mpList = new ArrayList<>();
+	        for (MonthlyPlan item : mp) {
+	        	MonthlyPlan mpTemp = new MonthlyPlan(item);
+	        	mpList.add(mpTemp);
+	        }
+	        return mpList;
+	    }
+	    
+
+	    public List<ViewMachineCuring> getMachinesByItemCuring(String itemCuring) {
+		    List<Map<String, Object>> result = ctCuringRepo.getMachineByItemCuring(itemCuring);
+		    List<ViewMachineCuring> curingList = new ArrayList<>();
+
+		    for (Map<String, Object> map : result) {
+		    	ViewMachineCuring curing = new ViewMachineCuring();
+		        curing.setOperationShortText((String) map.get("OPERATION_SHORT_TEXT"));
+		        
+		        curingList.add(curing);
+		    }
+
+		    return curingList;
+		}
+	    
+	    public ViewMonthlyPlanning getDetailMonthlyPlan() {
+	    	List<Map<String, Object>> result = monthlyPlanningRepo.getDetailMP();
+		    List<DetailMonthlyPlanCuring> detailMpl = new ArrayList<>();
+		    List<Map<String, Object>> sizePa = new ArrayList<>();
+		    List<Map<String, Object>> description = new ArrayList<>();
+		    List<DetailDailyMonthlyPlanCuring> detailDailyMpl = new ArrayList<>();
+
+		    for(Map<String, Object> data: result) {
+		    	DetailMonthlyPlanCuring detailMp = new DetailMonthlyPlanCuring();
+		    	detailMp.setDetailIdCuring((BigDecimal) data.get("DETAIL_ID_CURING"));
+		    	detailMp.setDocNumber((String) data.get("DOC_NUM_CURING"));
+
+		    	detailMp.setPartNumber((BigDecimal) data.get("PART_NUMBER"));
+		    	detailMp.setTotal((BigDecimal) data.get("TOTAL"));
+		    	detailMp.setNetFulfilment((BigDecimal) data.get("NET_FULFILMENT"));
+		    	detailMp.setGrossReq((BigDecimal) data.get("GROSS_REQ"));
+		       	detailMp.setNetReq((BigDecimal) data.get("NET_REQ"));
+		    	detailMp.setReqAhmOem((BigDecimal) data.get("REQ_AHM_OEM"));
+		    	detailMp.setReqAhmRem((BigDecimal) data.get("REQ_AHM_REM"));
+		    	detailMp.setReqFdr((BigDecimal) data.get("REQ_FDR"));
+		    	detailMp.setDifferenceOfs((BigDecimal) data.get("DIFFERENCE_OFS"));
+		    	
+		    	Map<String, Object> sizee = new HashMap<>();
+		    	sizee.put("partNumber", data.get("PART_NUMBER"));
+		        sizee.put("description", data.get("DESCRIPTION"));
+		        sizee.put("patternName", data.get("PATTERN_NAME"));
+
+		        sizePa.add(sizee);
+		    	detailMpl.add(detailMp);
+		    	
+		    	List<Map<String, Object>> daily2 = monthlyPlanningRepo.getDetailDailyMP((BigDecimal) data.get("DETAIL_ID_CURING"));
+			    for(Map<String, Object> data2: daily2) {
+			    	DetailDailyMonthlyPlanCuring detailDailyMp = new DetailDailyMonthlyPlanCuring();
+			    	detailDailyMp.setDetailDailyIdCuring((BigDecimal) data2.get("DETAIL_DAILY_ID_CURING"));
+			    	detailDailyMp.setDetailIdCuring((BigDecimal) data2.get("DETAIL_ID_CURING"));
+			    	detailDailyMp.setDateDailyMp((Date) data2.get("DATE_DAILY_MP"));
+			    	detailDailyMp.setWorkDay((BigDecimal) data2.get("WORK_DAY"));
+			    	detailDailyMp.setTotalPlan((BigDecimal) data2.get("TOTAL_PLAN"));
+			    	
+			    	Map<String, Object> desc = new HashMap<>();
+			    	desc.put("dateDailyMp", data2.get("DATE_DAILY_MP"));
+			    	desc.put("description", data2.get("DESCRIPTION"));
+
+			    	description.add(desc);
+			    	detailDailyMpl.add(detailDailyMp);
+			    	
+			    }
+		    	
+		    }
+		    
+		    ViewMonthlyPlanning view = new ViewMonthlyPlanning();
+		    view.setDetailMonthlyPlanCuring(detailMpl);
+		    view.setDetailDailyMonthlyPlanCuring(detailDailyMpl);
+		    view.setSizePa(sizePa);
+		    view.setDescription(description);
+
+		    return view;
+		}
+	    
+	    public ViewMonthlyPlanning getDetailMonthlyPlanById(String docNum) {
+	        MonthlyPlanningCuring monthlyPlanningCuring = monthlyPlanningRepo.findMpById(docNum);
+	        
+	        List<Map<String, Object>> result = monthlyPlanningRepo.getDetailMPById(docNum);
+	        
+	        List<DetailMonthlyPlanCuring> detailMpl = new ArrayList<>();
+	        List<Map<String, Object>> sizePa = new ArrayList<>();
+	        List<Map<String, Object>> description = new ArrayList<>();
+	        List<DetailDailyMonthlyPlanCuring> detailDailyMpl = new ArrayList<>();
+
+	        for(Map<String, Object> data: result) {
+	            DetailMonthlyPlanCuring detailMp = new DetailMonthlyPlanCuring();
+	            detailMp.setDetailIdCuring((BigDecimal) data.get("DETAIL_ID_CURING"));
+	            detailMp.setDocNumber((String) data.get("DOC_NUM_CURING"));
+	            detailMp.setPartNumber((BigDecimal) data.get("PART_NUMBER"));
+	            detailMp.setTotal((BigDecimal) data.get("TOTAL"));
+	            detailMp.setNetFulfilment((BigDecimal) data.get("NET_FULFILMENT"));
+	            detailMp.setGrossReq((BigDecimal) data.get("GROSS_REQ"));
+	            detailMp.setNetReq((BigDecimal) data.get("NET_REQ"));
+	            detailMp.setReqAhmOem((BigDecimal) data.get("REQ_AHM_OEM"));
+	            detailMp.setReqAhmRem((BigDecimal) data.get("REQ_AHM_REM"));
+	            detailMp.setReqFdr((BigDecimal) data.get("REQ_FDR"));
+	            detailMp.setDifferenceOfs((BigDecimal) data.get("DIFFERENCE_OFS"));
+	            
+	            Map<String, Object> sizee = new HashMap<>();
+	            sizee.put("partNumber", data.get("PART_NUMBER"));
+	            sizee.put("description", data.get("DESCRIPTION"));
+	            sizee.put("patternName", data.get("PATTERN_NAME"));
+	            sizePa.add(sizee);
+	            detailMpl.add(detailMp);
+	            
+	            List<Map<String, Object>> daily2 = monthlyPlanningRepo.getDetailDailyMP((BigDecimal) data.get("DETAIL_ID_CURING"));
+	            for(Map<String, Object> data2: daily2) {
+	                DetailDailyMonthlyPlanCuring detailDailyMp = new DetailDailyMonthlyPlanCuring();
+	                detailDailyMp.setDetailDailyIdCuring((BigDecimal) data2.get("DETAIL_DAILY_ID_CURING"));
+	                detailDailyMp.setDetailIdCuring((BigDecimal) data2.get("DETAIL_ID_CURING"));
+	                detailDailyMp.setDateDailyMp((Date) data2.get("DATE_DAILY_MP"));
+	                detailDailyMp.setWorkDay((BigDecimal) data2.get("WORK_DAY"));
+	                detailDailyMp.setTotalPlan((BigDecimal) data2.get("TOTAL_PLAN"));
+	                
+	                Map<String, Object> desc = new HashMap<>();
+	                desc.put("dateDailyMp", data2.get("DATE_DAILY_MP"));
+	                desc.put("description", data2.get("DESCRIPTION"));
+	                description.add(desc);
+	                detailDailyMpl.add(detailDailyMp);
+	            }
+	        }
+	        
+	        ViewMonthlyPlanning view = new ViewMonthlyPlanning();
+	        view.setMonthlyPlanningCuring(monthlyPlanningCuring);
+	        view.setDetailMonthlyPlanCuring(detailMpl);
+	        view.setDetailDailyMonthlyPlanCuring(detailDailyMpl);
+	        view.setSizePa(sizePa);
+	        view.setDescription(description);
+	        
+	        return view;
+	    }
+	    
+	    
+	    public List<ViewDetailShiftMonthlyPlan> getShiftMonthlyPlan(Date actualDate, BigDecimal detailDailyId ) {
+	        List<Map<String, Object>> result = monthlyPlanningRepo.getDetailMonthlyPlan(detailDailyId);
+	        if (result == null || result.isEmpty()) {
+	            throw new RuntimeException("Detail Monthly Plan tidak ditemukan: " + detailDailyId);
+	        }
+
+	        List<ViewDetailShiftMonthlyPlan> detailShiftMpl = new ArrayList<>();
+
+	        for (Map<String, Object> data : result) {
+	            List<Map<String, Object>> shift = monthlyPlanningRepo.getDetailShiftMP(actualDate, detailDailyId);
+	            for (Map<String, Object> data3 : shift) {
+	                ViewDetailShiftMonthlyPlan detailShiftMp = new ViewDetailShiftMonthlyPlan();
+	                detailShiftMp.setDetailShiftIdCuring((BigDecimal) data3.get("DETAIL_SHIFT_ID_CURING"));
+	                detailShiftMp.setDetailDailyIdCuring((BigDecimal) data3.get("DETAIL_DAILY_ID_CURING"));
+	                detailShiftMp.setMoId((String) data3.get("MO_ID"));
+	                detailShiftMp.setMpCuringId((String) data3.get("MP_CURING_ID"));
+	                detailShiftMp.setActualDate((Date) data3.get("ACTUAL_DATE"));
+	                detailShiftMp.setItemCuring((String) data3.get("ITEM_CURING"));
+	                detailShiftMp.setPartNumber((BigDecimal) data3.get("PART_NUMBER"));
+	                detailShiftMp.setCavity((BigDecimal) data3.get("CAVITY"));
+	                detailShiftMp.setCavityUsage((BigDecimal) data3.get("CAVITY_USAGE"));
+	                detailShiftMp.setCavityExist((BigDecimal) data3.get("CAVITY_EXIST"));
+	                detailShiftMp.setWorkCenterText((String) data3.get("WORK_CENTER_TEXT"));
+	                detailShiftMp.setKapaShift1((BigDecimal) data3.get("KAPA_SHIFT_1"));
+	                detailShiftMp.setKapaShift2((BigDecimal) data3.get("KAPA_SHIFT_2"));
+	                detailShiftMp.setKapaShift3((BigDecimal) data3.get("KAPA_SHIFT_3"));
+	                detailShiftMp.setTotalKapa((BigDecimal) data3.get("TOTAL_KAPA"));
+	                detailShiftMp.setWct((String) data3.get("WCT"));
+	                detailShiftMp.setChangeDate((Date) data3.get("CHANGE_DATE"));
+	                detailShiftMp.setShift((BigDecimal) data3.get("SHIFT"));
+
+	                detailShiftMpl.add(detailShiftMp);
+	            }
+	        }
+
+	        return detailShiftMpl;
 	    }
 
 	}
