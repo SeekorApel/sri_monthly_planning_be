@@ -14,9 +14,9 @@ import sri.sysint.sri_starter_back.model.WorkDay;
 
 public interface WorkDayRepo extends JpaRepository<WorkDay, Date> {
     
-	@Query(value = "SELECT * FROM SRI_IMPP_M_WD WHERE DATE_WD = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
+	@Query(value = "SELECT * FROM SRI_IMPP_M_WD WHERE TRUNC(DATE_WD) = TO_DATE(:id, 'DD-MM-YYYY')", nativeQuery = true)
 	Optional<WorkDay> findByDDateWd(@Param("id") String id);
-    
+
     @Query(value = "SELECT * FROM SRI_IMPP_M_WD ORDER BY DATE_WD ASC", nativeQuery = true)
     List<WorkDay> getDataOrderByDateWd();
     

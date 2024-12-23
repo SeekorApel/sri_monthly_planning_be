@@ -246,8 +246,15 @@ public class MachineTassServiceImpl {
                 idCell.setCellValue(m.getID_MACHINE_TASS());
                 idCell.setCellStyle(borderStyle);
 
+                String buildingName = null;
+                if (m.getBUILDING_ID() != null) {
+                    Building building = buildingRepo.findById(m.getBUILDING_ID()).orElse(null);
+                    if (building != null) {
+                        buildingName = building.getBUILDING_NAME();
+                    }
+                }
                 Cell buildingNameCell = dataRow.createCell(2);
-                buildingNameCell.setCellValue("");
+                buildingNameCell.setCellValue(buildingName != null ? buildingName : "");
                 buildingNameCell.setCellStyle(borderStyle);
 
                 Cell floorCell = dataRow.createCell(3);
@@ -258,8 +265,16 @@ public class MachineTassServiceImpl {
                 machineNumberCell.setCellValue(m.getMACHINE_NUMBER() != null ? m.getMACHINE_NUMBER().doubleValue() : null);
                 machineNumberCell.setCellStyle(borderStyle);
 
+                String typeName = null;
+                if (m.getMACHINE_TASS_TYPE_ID() != null) {
+                    MachineTassType type = machineTassTypeRepo.findById(m.getMACHINE_TASS_TYPE_ID()).orElse(null);
+                    if (type != null) {
+                    	typeName = type.getMACHINETASSTYPE_ID();
+                    }
+                }
+                
                 Cell typeCell = dataRow.createCell(5);
-                typeCell.setCellValue("");
+                typeCell.setCellValue(typeName != null ? typeName : "");
                 typeCell.setCellStyle(borderStyle);
 
                 Cell workCenterTextCell = dataRow.createCell(6);

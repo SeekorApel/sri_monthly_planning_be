@@ -153,6 +153,48 @@ public class DWorkDayHoursSpecificController {
         return response;
     }
     
+    @GetMapping("/getDWorkDayHoursSpecificListByDate/{date}")
+    public Response getDWorkDayHoursSpecificListByDate(final HttpServletRequest req, @PathVariable String date) throws ResourceNotFoundException {
+        String header = req.getHeader("Authorization");
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            throw new ResourceNotFoundException("JWT token not found or maybe not valid");
+        }
+
+        String token = header.replace("Bearer ", "");
+
+        try {
+            String user = JWT.require(Algorithm.HMAC512(SECRET.getBytes()))
+                .build()
+                .verify(token)
+                .getSubject();
+
+            if (user != null) {
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+                Date parsedDate = dateFormat.parse(date);
+
+                List<DWorkDayHoursSpesific> dWorkDayHoursSpecific = dWorkDayHoursSpecificServiceImpl.getWorkDayHoursSpecificListByDate(parsedDate);
+
+                response = new Response(
+                    new Date(),
+                    HttpStatus.OK.value(),
+                    null,
+                    HttpStatus.OK.getReasonPhrase(),
+                    req.getRequestURI(),
+                    dWorkDayHoursSpecific
+                );
+            } else {
+                throw new ResourceNotFoundException("User not found");
+            }
+        } catch (ParseException e) {
+            throw new ResourceNotFoundException("Invalid date format, expected format is dd-MM-yyyy");
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("JWT token is not valid or expired");
+        }
+
+        return response;
+    }
+    
     @GetMapping("/getDWorkDayHoursSpecificByDateDesc/{date}/{description}")
     public Response getWorkDayByDateDesc(final HttpServletRequest req, 
                                           @PathVariable String date, 
