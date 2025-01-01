@@ -69,6 +69,7 @@ import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
 import sri.sysint.sri_starter_back.model.transaksi.ViewMonthlyPlanning;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewDetailShiftMonthlyPlan;
+import sri.sysint.sri_starter_back.model.view.ViewDistinctMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewMachineCuring;
 import sri.sysint.sri_starter_back.model.view.ViewMarketingOrder;
@@ -140,6 +141,17 @@ public class MarketingOrderServiceImpl {
 	//GET CAPACITY FOR MO
     public String getCapacityValue() {
         return settingRepo.getCapacity();
+    }
+    
+    //Find Distinct Month
+    public List<ViewDistinctMarketingOrder> findDistinctMonths(){
+        List<Object[]> results = marketingOrderRepo.findDistinctMonths();
+        return results.stream()
+                      .map(row -> new ViewDistinctMarketingOrder(
+                          (Date) row[0], 
+                          (Date) row[1], 
+                          (Date) row[2]))
+                      .collect(Collectors.toList());
     }
     
   //EXPORT RESUME

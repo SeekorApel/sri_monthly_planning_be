@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import sri.sysint.sri_starter_back.model.HeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.MarketingOrder;
+import sri.sysint.sri_starter_back.model.view.ViewDistinctMarketingOrder;
 
 public interface MarketingOrderRepo extends JpaRepository<MarketingOrder, String>{
 	
@@ -234,5 +235,14 @@ public interface MarketingOrderRepo extends JpaRepository<MarketingOrder, String
 	            ") " +
 	            "WHERE rn = 1", nativeQuery = true)
 		List<MarketingOrder> findMoAllTypeByMonth(@Param("month0") String moMonth0, @Param("month1") String moMonth1, @Param("month2") String moMonth2);
+		
+		@Query(value = "SELECT MONTH_0, MONTH_1, MONTH_2 " +
+	               "FROM SRI_IMPP_T_MARKETINGORDER " +
+	               "GROUP BY MONTH_0, MONTH_1, MONTH_2 " +
+	               "ORDER BY MONTH_0, MONTH_1, MONTH_2", 
+	       nativeQuery = true)
+		List<Object[]> findDistinctMonths();
+
+
 
 }

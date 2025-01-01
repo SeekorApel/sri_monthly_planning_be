@@ -54,6 +54,7 @@ import sri.sysint.sri_starter_back.model.transaksi.SaveMarketingOrderPPC;
 import sri.sysint.sri_starter_back.model.transaksi.ViewMonthlyPlanning;
 import sri.sysint.sri_starter_back.model.view.ViewDetailMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewDetailShiftMonthlyPlan;
+import sri.sysint.sri_starter_back.model.view.ViewDistinctMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewHeaderMarketingOrder;
 import sri.sysint.sri_starter_back.model.view.ViewMachineCuring;
 import sri.sysint.sri_starter_back.model.view.ViewMarketingOrder;
@@ -97,6 +98,23 @@ public class MarketingOrderController {
     
     
     //------------------------------------------MARKETING ORDER-------------------------------------
+    
+    
+    //Get Distinct Month
+    @PostMapping("/getDistinctMonthMo")
+    public Response getDistinctMonthMo(final HttpServletRequest req) {
+    	try {
+        	List<ViewDistinctMarketingOrder> data = marketingOrderServiceImpl.findDistinctMonths();
+        	if(!data.isEmpty()) {
+        		response = new Response(new Date(), HttpStatus.OK.value(), null, HttpStatus.OK.getReasonPhrase(), req.getRequestURI(), data);
+        	}else {
+        		response = new Response(new Date(), HttpStatus.NOT_FOUND.value(), null, HttpStatus.NOT_FOUND.getReasonPhrase(), req.getRequestURI(), null);
+        	}
+    	}catch(Exception e){
+    		response = new Response(new Date(), HttpStatus.INTERNAL_SERVER_ERROR.value(), null, e.getMessage(), req.getRequestURI(), null);
+    	}
+    	return response;
+    }
     
     //Export Resume
     @RequestMapping("/exportResumeMO/{month0}/{month1}/{month2}")
