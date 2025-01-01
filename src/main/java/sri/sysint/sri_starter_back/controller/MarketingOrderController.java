@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -96,6 +97,33 @@ public class MarketingOrderController {
     
     
     //------------------------------------------MARKETING ORDER-------------------------------------
+    
+    //Export Resume
+    @RequestMapping("/exportResumeMO/{month0}/{month1}/{month2}")
+	public ResponseEntity<InputStreamResource> exportResume(@PathVariable String month0, @PathVariable String month1, @PathVariable String month2) throws IOException {
+    	String MM = "";
+    	try {
+    		SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+            Date date0 = dateFormat.parse(month0);
+
+            // Format ulang menjadi 3 huruf pertama bulan
+            SimpleDateFormat outputFormat0 = new SimpleDateFormat("MMM", Locale.ENGLISH);
+            String m0 = outputFormat0.format(date0).toUpperCase();
+
+            MM = m0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+	    String filename = "Resume MO " + MM + ".xlsx";
+	    
+	    ByteArrayInputStream data = marketingOrderServiceImpl.resumeMO(month0, month1, month2);
+	    InputStreamResource file = new InputStreamResource(data);
+	    
+	    return ResponseEntity.ok()
+	        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+	        .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+	        .body(file);
+	}
     
     @PostMapping("/arRejectDefectMo")
     public Response arDefectReject(final HttpServletRequest req, @RequestBody SaveFinalMarketingOrder mo) throws ResourceNotFoundException{
