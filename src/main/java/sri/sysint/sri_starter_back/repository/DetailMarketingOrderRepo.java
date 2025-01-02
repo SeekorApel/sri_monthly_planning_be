@@ -889,4 +889,9 @@ public interface DetailMarketingOrderRepo extends JpaRepository<DetailMarketingO
 			+ "    MO.MO_MONTH_0 DESC", nativeQuery = true)
 	
 		List<Map<String, Object>> findByMoIdSortProductTypeBomFrontRear(@Param("moId") String moId, @Param("moId2") String moId2);
+	
+	
+	//DetailMarketingOrderRepo
+	@Query(value = "SELECT * FROM SRI_IMPP_D_MARKETINGORDER WHERE MO_ID = :moId1 OR MO_ID = :moId2", nativeQuery = true)
+	List<DetailMarketingOrder> findByTwoMoId(@Param("moId1") String moId1, @Param("moId2") String moId2);
 }

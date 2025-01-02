@@ -71,6 +71,10 @@ public interface HeaderMarketingOrderRepo extends JpaRepository <HeaderMarketing
     		+ "    		WHERE EXTRACT(MONTH FROM DATE_WD) = :month "
     		+ "    		AND EXTRACT(YEAR FROM DATE_WD) = :year", nativeQuery = true)
 	Map<String, Object> getMonthlyWorkData(@Param("month") int month, @Param("year") int year);
+	
+	//HeaderMarketingOrderRepo
+	@Query(value = "SELECT * FROM SRI_IMPP_D_HEADERMARKETINGORDER WHERE MO_ID = :moId1 OR MO_ID = :moId2", nativeQuery = true)
+	List<HeaderMarketingOrder> findByTwoMoId(@Param("moId1") String moId1, @Param("moId2") String moId2);
    
 
 }

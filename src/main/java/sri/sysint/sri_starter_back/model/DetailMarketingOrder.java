@@ -87,10 +87,7 @@ public class DetailMarketingOrder {
 	
 	@Column(name = "LOCK_STATUS_MONTH_2")
 	private BigDecimal lockStatusM2;
-	
-	@Column(name = "TOTAL_AR")
-	private BigDecimal totalAr;
-	
+		
 	@Column(name = "AR")
 	private BigDecimal ar;
 	
@@ -159,14 +156,6 @@ public class DetailMarketingOrder {
 	public DetailMarketingOrder() {}
 
 	
-	public BigDecimal getTotalAr() {
-		return totalAr;
-	}
-
-	public void setTotalAr(BigDecimal totalAr) {
-		this.totalAr = totalAr;
-	}
-
 	public BigDecimal getDetailId() {
 		return detailId;
 	}
